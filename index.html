@@ -97,6 +97,7 @@
 const COLONNES_MASQUEES = [];
 // Nombre d'informations montrées dans la partie « Résumé » ; les autres vont dans « Toutes les informations ».
 const NB_RESUME = 4;
+const VERSION = '4';   // affichée en haut à gauche pour vérifier que la dernière version est bien chargée
 
 // Niveaux de risque : le widget lit le texte de votre colonne (accents et majuscules sans importance).
 const NIVEAUX = {
@@ -196,7 +197,7 @@ function appliquerFiltres() {
     else if (cluster.hasLayer(m)) cluster.removeLayer(m);
   }
   document.getElementById('count').innerHTML = `<strong>${n}</strong> sur ${marqueurs.size} établissement${marqueurs.size>1?'s':''}` +
-    (sansGps ? `<br>${sansGps} sans coordonnées valides` : '');
+    (sansGps ? `<br>${sansGps} sans coordonnées valides` : '') + `<br><small>version ${VERSION}</small>`;
 }
 
 const panneau = document.getElementById('fiche-panel');
@@ -211,7 +212,7 @@ function ouvrirFiche(id, focus = true) {
     `<div class="fp-tete"><button type="button" class="fp-fermer" aria-label="Fermer la fiche">✕</button>
        <h2>${esc(d.nom || 'Sans nom')}</h2>
        <span class="niv" style="background:${d.niv.couleur};color:${d.niv.cle==='moyen'?'#1d2733':'#fff'}">${esc(d.niv.texte || d.niv.label)}</span></div>
-     <div class="fp-corps">${d.champs.length ? lignes(d.champs) : '<p class="vide">Aucune autre information renseignée.</p>'}</div>
+     <div class="fp-corps">${d.champs.length ? lignes(d.champs) : `<p class="vide">Aucune autre information reçue de Grist (colonnes reçues : ${d.nbCols}).</p>`}</div>
      <div class="fp-pied"><button type="button" class="fp-select">Sélectionner la ligne dans Grist</button></div>`;
   panneau.classList.add('ouvert'); panneau.setAttribute('aria-hidden', 'false');
   if (focus) panneau.querySelector('.fp-fermer').focus();
@@ -280,7 +281,7 @@ grist.onRecords((records, mappings) => {
     if (r.lat == null || r.lng == null || r.lat === '' || r.lng === '' || !isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) { sansGps++; return; }
     const champs = Object.entries(raw).filter(([k]) => !exclues.has(k))
       .map(([k,v]) => [joli(k), formater(k,v)]).filter(([,v]) => v !== null);
-    const data = { id:raw.id, nom:r.nom, niv:niveau(r.niveau), champs };
+    const data = { id:raw.id, nom:r.nom, niv:niveau(r.niveau), champs, nbCols:Object.keys(raw).length };
     vus.add(raw.id);
 
     let m = marqueurs.get(raw.id);
