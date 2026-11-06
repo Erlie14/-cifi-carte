@@ -164,6 +164,26 @@
   details.regle > summary::before { content:"▸"; color:var(--muted); } details.regle[open] > summary::before { content:"▾"; }
   .rg-nom { flex:1; font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .rg-btns { display:flex; gap:4px; } .rg-corps-r { padding:0 12px 12px; }
+  .ref { color:#6b7785; text-decoration:none; border-bottom:1px dotted #9aa5b1; cursor:pointer; } .ref:hover { color:var(--accent); } .ref-ico { font-size:.8em; margin-left:2px; opacity:.75; }
+  .pulse { position:absolute; left:0; top:0; z-index:-1; border-radius:50%; background:var(--bc); opacity:.5; animation:pulse 1.6s ease-out infinite; pointer-events:none; }
+  @keyframes pulse { 0% { transform:scale(.8); opacity:.6; } 100% { transform:scale(2.3); opacity:0; } }
+  @media (prefers-reduced-motion:reduce) { .pulse { animation:none; opacity:.25; transform:scale(1.5); } }
+  .bul { position:absolute; pointer-events:none; font:700 11px/1 system-ui,sans-serif; border-radius:10px; padding:3px 7px; white-space:nowrap; box-shadow:0 1px 3px #0005; border:1px solid #fff; }
+  .bul.coin { right:-9px; top:-9px; min-width:16px; text-align:center; padding:3px 5px; }
+  .bul.txt::before { content:''; position:absolute; left:-5px; top:50%; margin-top:-5px; border:5px solid transparent; border-left:0; border-right-color:var(--bc); }
+  #iti-panel { position:absolute; top:0; right:0; bottom:0; width:min(420px,100%); z-index:1100; background:#fff; box-shadow:-4px 0 18px #0003; display:flex; flex-direction:column; transform:translateX(105%); visibility:hidden; transition:transform .2s ease, visibility .2s; }
+  #iti-panel.ouvert { transform:none; visibility:visible; }
+  .iti-ligne { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:8px; font-size:14px; }
+  .iti-actions { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
+  .iti-actions button, .iti-btn2 { font:inherit; font-size:13px; padding:6px 10px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; color:var(--ink); }
+  .iti-actions button.prim { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .iti-liste { list-style:none; margin:10px 0 0; padding:0; } .iti-liste li { display:grid; grid-template-columns:26px 1fr auto; gap:6px; align-items:start; padding:7px 0; border-bottom:1px solid #eef1f5; font-size:14px; }
+  .iti-liste .num { width:22px; height:22px; border-radius:50%; background:#1d2733; color:#fff; font:700 12px/22px system-ui; text-align:center; } .iti-liste small { display:block; color:var(--muted); }
+  .iti-liste button { font-size:12px; padding:2px 6px; border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer; }
+  .iti-num { width:18px; height:18px; border-radius:50%; background:#1d2733; color:#fff; font:700 11px/14px system-ui; text-align:center; border:2px solid #fff; box-shadow:0 0 0 1px #0006; box-sizing:border-box; }
+  .iti-total { margin-top:10px; font-weight:600; }
+  @media print { body.imprime-iti #map, body.imprime-iti #fiche-panel, body.imprime-iti #reglages { display:none !important; } body.imprime-iti #iti-panel { position:static; transform:none; visibility:visible; width:auto; box-shadow:none; }
+    body.imprime-iti .iti-actions, body.imprime-iti .fp-pied, body.imprime-iti .fp-fermer, body.imprime-iti .iti-liste button, body.imprime-iti .iti-ligne, body.imprime-iti #iti-retour { display:none; } }
 </style>
 </head>
 <body>
@@ -172,7 +192,7 @@
 <aside id="fiche-panel" aria-label="Fiche de l’établissement" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '17';
+const VERSION = '18';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const swatch = (f, c, t) => `<span class="sw"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};width:22px;height:22px;font-size:${String(t || '').length > 2 ? 8 : 12}px"><span>${esc(t || '')}</span></span></span>`;
@@ -202,20 +222,34 @@ function sombre(h) { const m = /^#?([0-9a-f]{6})$/i.exec(h || ''); if (!m) retur
 const afficherMsg = h => { const m = document.getElementById('msg'); m.innerHTML = h; m.style.display = h ? 'flex' : 'none'; };
 
 /* ================= ÉTAT ================= */
-const nEntree = x => ({ c:x.c, nom:x.nom || '', gn:x.gn ?? !!x.gras, gi:!!x.gi, vg:x.vg ?? x.vs === 'b', vi:x.vi ?? x.vs === 'i', vb:x.vb ?? x.vs === 'badge', ta:x.ta || '' });
+const nEntree = x => ({ c:x.c, nom:x.nom || '', gn:x.gn ?? !!x.gras, gi:!!x.gi, vg:x.vg ?? x.vs === 'b', vi:x.vi ?? x.vs === 'i', vb:x.vb ?? x.vs === 'badge', ta:x.ta || '', cn:x.cn || '', cw:x.cw || '' });
 const nRegle = r => ({ o:r.o === true, nom:r.nom || '', si:(r.si || []).map(k => ({ c:k.c || '', op:k.op || '=', v:k.v ?? '' })), couleur:r.couleur || '', forme:r.forme || '',
-  contenu:{ t:(r.contenu && r.contenu.t) || '', e:(r.contenu && r.contenu.e) || '', c:(r.contenu && r.contenu.c) || '' } });
+  contenu:{ t:(r.contenu && r.contenu.t) || '', e:(r.contenu && r.contenu.e) || '', c:(r.contenu && r.contenu.c) || '' },
+  bulle:{ t:(r.bulle && r.bulle.t) || '', src:(r.bulle && r.bulle.src) || '', e:(r.bulle && r.bulle.e) || '', c:(r.bulle && r.bulle.c) || '', couleur:/^#[0-9a-f]{6}$/i.test((r.bulle && r.bulle.couleur) || '') ? r.bulle.couleur : '#c1121f', pulse:!!(r.bulle && r.bulle.pulse) } });
 const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(s => ({ nom:s.nom || '', cols:(s.cols || []).map(nEntree) })), regles:(c.regles || []).map(nRegle), defaut:{ ...DEFAUT, ...(c.defaut || {}) } }; };
-let opts = {}, cfg = norm(), lastRec = null, lastMap = null, labels = {}, types = {}, allCols = [], donnees = new Map(), tid = null, erreurAcces = '', labelsCharges = false;
+let opts = {}, cfg = norm(), lastRec = null, lastMap = null, labels = {}, types = {}, allCols = [], donnees = new Map(), tid = null, erreurAcces = '', labelsCharges = false, labelsT = {}, typesT = {}, visT = {}, refTabs = {}, lieeOuverte = false;
 let recherche = '', premierChargement = true, idSelectionne = null, ficheId = null, sansGps = 0, regroupPrec = true, sigFiltres = '', listeOuverte = false, cptCols = [], sigAff = '', legOuverte = true, legCats = [];
 const marqueurs = new Map(), masques = new Set(), filtreSel = {}, etatSections = new Map();
 const opt = (n, d) => (opts[n] === undefined || opts[n] === null || opts[n] === '') ? d : opts[n];
 const libel = c => labels[c] || joli(c);
-function fmt(c, v) {
-  const t = types[c] || '';
+const refDe = t => { const m = /^Ref(List)?:(.+)$/.exec(t || ''); return m ? { table:m[2] } : null; };
+function nomRef(tn, c, id) {
+  const rf = refDe((typesT[tn] || {})[c]), row = rf && refTabs[rf.table] && refTabs[rf.table].get(id), vc = (visT[tn] || {})[c];
+  if (!row) return String(id);
+  return (vc ? fmtG(rf.table, vc, row[vc]) : null) ?? String(id);
+}
+function fmtG(tn, c, v) {   // formatage selon le type réel de la colonne ; les colonnes « Référence » affichent la valeur de la fiche liée
+  const t = (typesT[tn] || {})[c] || '';
+  if (refDe(t)) { const ids = (Array.isArray(v) ? v.filter(x => x !== 'L') : [v]).filter(x => x > 0); return ids.length ? ids.map(i => nomRef(tn, c, i)).join(', ') : null; }
   if (typeof v === 'number' && t === 'Date') return new Date(v * 1000).toLocaleDateString('fr-FR', { timeZone:'UTC' });
   if (typeof v === 'number' && t.startsWith('DateTime')) return new Date(v * 1000).toLocaleString('fr-FR');
   return formater(c, v);
+}
+const fmt = (c, v) => fmtG(tid, c, v);
+function refInfo(c, v) {
+  const rf = refDe(types[c]); if (!rf) return null;
+  const ids = (Array.isArray(v) ? v.filter(x => x !== 'L') : [v]).filter(x => x > 0); if (!ids.length) return null;
+  return { t:rf.table, ids, noms:ids.map(i => nomRef(tid, c, i)) };
 }
 
 /* ================= RÈGLES D'AFFICHAGE DES POINTS ================= */
@@ -237,15 +271,16 @@ function test(k, vals) {
 const regleActive = r => r.si.length && r.si.every(k => k.c);
 const nomRegle = r => r.nom.trim() || (r.si[0] && r.si[0].c ? `${libel(r.si[0].c)} ${(OPS.find(o => o[0] === r.si[0].op) || [])[0] || ''} ${r.si[0].v || ''}`.trim() : 'Règle');
 function styleDe(vals) {
-  let couleur = null, forme = null, contenu = null, cat = -1;
+  let couleur = null, forme = null, contenu = null, bulle = null, cat = -1;
   cfg.regles.forEach((r, i) => {
     if (!regleActive(r) || !r.si.every(k => test(k, vals))) return;
     if (cat < 0) cat = i;
     if (couleur === null && r.couleur) couleur = r.couleur;
     if (forme === null && r.forme) forme = r.forme;
+    if (bulle === null && r.bulle.t) bulle = { t:r.bulle.t, couleur:r.bulle.couleur, pulse:r.bulle.t === 'signal' || r.bulle.pulse, txt: r.bulle.t === 'signal' ? '' : r.bulle.src === 'col' ? String(fmt(r.bulle.c, vals[r.bulle.c]) ?? '').slice(0, 24) : r.bulle.e };
     if (contenu === null && r.contenu.t) contenu = r.contenu.t === 'emoji' ? r.contenu.e : (r.contenu.c ? String(fmt(r.contenu.c, vals[r.contenu.c]) ?? '').slice(0, 6) : '');
   });
-  return { couleur: couleur || cfg.defaut.couleur, forme: forme || cfg.defaut.forme, contenu: contenu || '', cat };
+  return { couleur: couleur || cfg.defaut.couleur, forme: forme || cfg.defaut.forme, contenu: contenu || '', bulle, cat };
 }
 
 /* ================= CARTE ET PANNEAU DE GAUCHE ================= */
@@ -307,10 +342,11 @@ haut.onAdd = () => {
   d.innerHTML = `<input type="search" id="q" placeholder="Rechercher un nom…" aria-label="Rechercher un établissement">
     <div id="filtres"></div><div id="compteurs"></div><div class="count" id="count"></div>
     <button class="link" id="liste-btn" type="button" aria-expanded="false">Afficher la liste des établissements</button><div id="liste" style="display:none"></div><br>
-    <button class="link" id="tout" type="button">Voir tous les points</button><div class="legend" id="legende"></div><div id="cfg-secours"></div>`;
+    <button class="link" id="tout" type="button">Voir tous les points</button><br><button class="link" id="iti-btn" type="button">🧭 Préparer un itinéraire</button><div class="legend" id="legende"></div><div id="cfg-secours"></div>`;
   L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
   d.querySelector('#q').addEventListener('input', e => { recherche = sansAccent(e.target.value.trim()); appliquerFiltres(); });
   d.querySelector('#tout').addEventListener('click', recentrer);
+  d.querySelector('#iti-btn').addEventListener('click', () => ouvrirIti());
   d.querySelector('#filtres').addEventListener('change', e => {
     const c = e.target.dataset.c; if (!c) return; const det = e.target.closest('details');
     filtreSel[c] = [...det.querySelectorAll('input:checked')].map(x => x.value);
@@ -348,7 +384,7 @@ function setListe(ouvert) {
 }
 function appliquerAffichage() {   // éléments du panneau de gauche affichés ou masqués, selon la configuration générale
   const A = k => opt('aff_' + k, true) !== false, show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
-  show('q', A('q')); show('filtres', A('filtres')); show('compteurs', A('compteurs')); show('tout', A('tout')); show('legende', A('legende')); show('commune-ctl', A('commune'));
+  show('q', A('q')); show('filtres', A('filtres')); show('compteurs', A('compteurs')); show('tout', A('tout')); show('legende', A('legende')); show('commune-ctl', A('commune')); show('iti-btn', A('iti'));
   const racine = document.documentElement;
   if (racine && racine.style) { racine.style.setProperty('--fs-popup', (+opt('taille_popup', 13) || 13) + 'px'); racine.style.setProperty('--fs-fiche', (+opt('taille_fiche', 14) || 14) + 'px'); } show('liste-btn', A('liste'));
   const sig = JSON.stringify([opt('ouv_liste', false), opt('ouv_legende', true)]);
@@ -373,21 +409,31 @@ function appliquerFiltres() {
   majListe();
 }
 function icone(d, sel) {
-  const t = +opt('taille', 30) || 30, s = d.style, c = s.contenu, g = s.forme === 'goutte';
+  const t = +opt('taille', 30) || 30, s = d.style, c = s.contenu, g = s.forme === 'goutte', b = s.bulle;
+  let avant = '', apres = '';
+  if (b) {
+    const k = sombre(b.couleur) ? '#1d2733' : '#fff';
+    if (b.pulse) avant = `<span class="pulse" style="--bc:${b.couleur};width:${t}px;height:${t}px"></span>`;
+    if (b.t === 'coin') apres = `<span class="bul coin" style="background:${b.couleur};color:${k}">${esc(b.txt)}</span>`;
+    if (b.t === 'texte') apres = `<span class="bul txt" style="background:${b.couleur};color:${k};--bc:${b.couleur};left:${t + 9}px;top:${Math.round(t / 2 - 11)}px">${esc(b.txt)}</span>`;
+  }
   return L.divIcon({ className:'', iconSize:[t,t], iconAnchor: g ? [t/2, Math.round(t * 1.2)] : [t/2, t/2], popupAnchor: g ? [0, -Math.round(t * 1.25)] : [0, -t/2],
-    html:`<div class="pin f-${s.forme}${sel ? ' sel' : ''}${sombre(s.couleur) ? ' sombre' : ''}" style="background:${s.couleur};width:${t}px;height:${t}px;font-size:${c.length > 2 ? 10 : Math.round(t * 0.5)}px"><span>${esc(c)}</span></div>` });
+    html: avant + `<div class="pin f-${s.forme}${sel ? ' sel' : ''}${sombre(s.couleur) ? ' sombre' : ''}" style="background:${s.couleur};width:${t}px;height:${t}px;font-size:${c.length > 2 ? 10 : Math.round(t * 0.5)}px"><span>${esc(c)}</span></div>` + apres });
 }
 
 /* ================= FICHES ================= */
-const TAILLES = { p:'88%', g:'118%', tg:'140%' };
-const lignes = l => `<dl>${l.map(([k, v, x]) => { x = x || {}; const st = TAILLES[x.ta] ? ` style="font-size:${TAILLES[x.ta]}"` : '', cn = [x.gn && 'b', x.gi && 'i'].filter(Boolean).join(' '), cv = [x.vg && 'b', x.vi && 'i'].filter(Boolean).join(' ');
-  return `<dt${cn ? ` class="${cn}"` : ''}${st}>${esc(k)}</dt><dd${cv ? ` class="${cv}"` : ''}${st}>${x.vb ? `<span class="badge">${esc(v)}</span>` : esc(v)}</dd>`; }).join('')}</dl>`;
-const champsDe = (liste, vals) => liste.map(x => [(x.nom || '').trim() || libel(x.c), fmt(x.c, vals[x.c]), x]).filter(a => a[1] !== null);
+const TAILLES = { p:'88%', g:'118%', tg:'140%' }, coul = c => /^#[0-9a-f]{6}$/i.test(c || '') ? c : '';
+const lignes = l => `<dl>${l.map(([k, v, x]) => { x = x || {};
+  const tl = TAILLES[x.ta] ? `font-size:${TAILLES[x.ta]};` : '', sd = tl + (coul(x.cn) ? `color:${coul(x.cn)};` : ''), sv = tl + (coul(x.cw) ? `color:${coul(x.cw)};` : ''),
+    cn = [x.gn && 'b', x.gi && 'i'].filter(Boolean).join(' '), cv = [x.vg && 'b', x.vi && 'i'].filter(Boolean).join(' ');
+  const val = x.ref ? x.ref.ids.map((id, i) => `<a class="ref" href="#" data-t="${esc(x.ref.t)}" data-id="${id}" data-n="${esc(x.ref.noms[i])}">${esc(x.ref.noms[i])}<span class="ref-ico" aria-hidden="true">↗</span></a>`).join(', ') : x.vb ? `<span class="badge">${esc(v)}</span>` : esc(v);
+  return `<dt${cn ? ` class="${cn}"` : ''}${sd ? ` style="${sd}"` : ''}>${esc(k)}</dt><dd${cv ? ` class="${cv}"` : ''}${sv ? ` style="${sv}"` : ''}>${val}</dd>`; }).join('')}</dl>`;
+const champsDe = (liste, vals) => liste.map(x => [(x.nom || '').trim() || libel(x.c), fmt(x.c, vals[x.c]), { ...x, ref:refInfo(x.c, vals[x.c]) }]).filter(a => a[1] !== null);
 const etiquette = d => d.style.cat >= 0 ? `<span class="niv" style="background:${d.style.couleur};color:${sombre(d.style.couleur) ? '#1d2733' : '#fff'}">${esc(nomRegle(cfg.regles[d.style.cat]))}</span>` : '';
 function fichier(d) {
   return `<div class="fiche" style="--niv:${d.style.couleur}"><header><h3>${esc(d.nom || 'Sans nom')}</h3>${etiquette(d)}</header>
     <div class="corps">${cfg.popup.length ? lignes(champsDe(cfg.popup, d.vals)) : '<p style="padding:10px 14px;margin:0;color:var(--muted);font-size:13px">Choisissez les colonnes du popup dans « Configurer le widget ».</p>'}</div>
-    <div class="pied"><button type="button" class="btn-fiche" data-id="${Number(d.id)}">Voir la fiche complète</button></div></div>`;
+    <div class="pied"><button type="button" class="btn-fiche" data-id="${Number(d.id)}">Voir la fiche complète</button> <button type="button" class="btn-iti" data-id="${Number(d.id)}" style="background:#fff;color:var(--accent);border:1px solid var(--accent)">＋ Itinéraire</button></div></div>`;
 }
 function corpsFiche(d) {
   const secs = cfg.sections.map((sec, i) => ({ sec, i, l: champsDe(sec.cols, d.vals) })).filter(x => x.l.length);
@@ -398,28 +444,43 @@ function corpsFiche(d) {
 }
 const panneau = document.getElementById('fiche-panel');
 function ouvrirFiche(id, focus = true) {
-  const m = marqueurs.get(id); if (!m) return; const d = m._cifi; ficheId = id;
+  const m = marqueurs.get(id); if (!m) return; const d = m._cifi; ficheId = id; lieeOuverte = false; fermerIti();
   panneau.style.setProperty('--niv', d.style.couleur);
   panneau.innerHTML = `<div class="fp-tete"><button type="button" class="fp-fermer" aria-label="Fermer la fiche">✕</button><h2>${esc(d.nom || 'Sans nom')}</h2>${etiquette(d)}</div>
-    <div class="fp-corps">${corpsFiche(d)}</div><div class="fp-pied"><button type="button" class="fp-select">Sélectionner la ligne dans Grist</button></div>`;
+    <div class="fp-corps">${corpsFiche(d)}</div><div class="fp-pied"><button type="button" class="fp-select">Sélectionner la ligne dans Grist</button> <button type="button" class="fp-iti">＋ Ajouter à l’itinéraire</button></div>`;
   panneau.classList.add('ouvert'); panneau.setAttribute('aria-hidden', 'false');
   if (focus) panneau.querySelector('.fp-fermer').focus();
 }
-function fermerFiche() { ficheId = null; panneau.classList.remove('ouvert'); panneau.setAttribute('aria-hidden', 'true'); }
+function ouvrirLiee(t, id, nom) {   // fiche liée (colonne « Référence ») : lecture seule, dans le même volet
+  const row = refTabs[t] && refTabs[t].get(id); if (!row) return;
+  const cols = Object.keys(row).filter(k => k !== 'id' && k !== 'manualSort' && !k.startsWith('gristHelper_'));
+  const l = cols.map(c => [(labelsT[t] || {})[c] || joli(c), fmtG(t, c, row[c]), {}]).filter(a => a[1] !== null);
+  lieeOuverte = true; fermerIti(); panneau.style.setProperty('--niv', '#6b7785');
+  panneau.innerHTML = `<div class="fp-tete"><button type="button" class="fp-fermer" aria-label="Fermer">✕</button><h2>${esc(nom || 'Fiche liée')}</h2><span class="niv" style="background:#6b7785;color:#fff">${esc(joli(t))}</span></div>
+    <div class="fp-corps">${l.length ? lignes(l) : '<p class="vide">Aucune information renseignée.</p>'}</div><div class="fp-pied"><button type="button" class="fp-retour">← Retour</button></div>`;
+  panneau.classList.add('ouvert'); panneau.setAttribute('aria-hidden', 'false');
+}
+function fermerFiche() { ficheId = null; lieeOuverte = false; panneau.classList.remove('ouvert'); panneau.setAttribute('aria-hidden', 'true'); }
 panneau.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details.theme')) etatSections.set(e.target.dataset.t, e.target.open); }, true);
 panneau.addEventListener('click', e => {
   if (e.target.closest('.fp-fermer')) fermerFiche();
+  if (e.target.closest('.fp-retour')) { if (ficheId !== null) ouvrirFiche(ficheId, false); else fermerFiche(); return; }
+  const a = e.target.closest('a.ref'); if (a) { e.preventDefault(); ouvrirLiee(a.dataset.t, +a.dataset.id, a.dataset.n); return; }
   if (e.target.closest('.fp-tout')) { const t = [...panneau.querySelectorAll('details.theme')], o = t.some(x => !x.open); t.forEach(x => { x.open = o; }); }
   const sl = e.target.closest('.fp-select');
   if (sl && ficheId !== null) { grist.setSelectedRows([ficheId]); if (grist.setCursorPos) grist.setCursorPos({ rowId:ficheId }); sl.textContent = '✓ Ligne sélectionnée dans Grist'; }
+  const it = e.target.closest('.fp-iti'); if (it && ficheId !== null) { const id = ficheId; itiAjouter([id]); }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && ficheId !== null) fermerFiche(); });
 map.on('popupopen', e => {
-  const el = e.popup.getElement(), b = el && el.querySelector('.btn-fiche'); if (!b) return;
-  L.DomEvent.disableClickPropagation(b);
-  b.addEventListener('click', () => { ouvrirFiche(Number(b.dataset.id)); map.closePopup(); });
+  const el = e.popup.getElement(); if (!el || el._lie) return; el._lie = true;
+  el.addEventListener('click', ev => {
+    const b = ev.target.closest('button[data-id]');
+    if (b) { const id = Number(b.dataset.id); if (b.classList.contains('btn-fiche')) { ouvrirFiche(id); map.closePopup(); } else if (b.classList.contains('btn-iti')) { itiAjouter([id]); } return; }
+    const a = ev.target.closest('a.ref'); if (a) { ev.preventDefault(); ouvrirLiee(a.dataset.t, +a.dataset.id, a.dataset.n); map.closePopup(); }
+  });
 });
-function rafraichir() { if (ficheId !== null) ouvrirFiche(ficheId, false); marqueurs.forEach(m => { if (m.isPopupOpen()) m.getPopup().update(); }); }
+function rafraichir() { if (ficheId !== null && !lieeOuverte) ouvrirFiche(ficheId, false); marqueurs.forEach(m => { if (m.isPopupOpen()) m.getPopup().update(); }); }
 
 /* ================= GRIST ================= */
 grist.ready({
@@ -446,8 +507,14 @@ async function chargerLibelles() {
   labelsCharges = true;
   try {
     tid = await grist.selectedTable.getTableId();
-    const T = await grist.docApi.fetchTable('_grist_Tables'), C = await grist.docApi.fetchTable('_grist_Tables_column'), ref = T.id[T.tableId.indexOf(tid)];
-    C.id.forEach((_, k) => { if (C.parentId[k] === ref) { labels[C.colId[k]] = C.label[k]; types[C.colId[k]] = C.type[k]; } });
+    const T = await grist.docApi.fetchTable('_grist_Tables'), C = await grist.docApi.fetchTable('_grist_Tables_column'), tDe = {}, cDe = {};
+    T.id.forEach((id, k) => { tDe[id] = T.tableId[k]; }); C.id.forEach((id, k) => { cDe[id] = C.colId[k]; });
+    C.id.forEach((_, k) => {
+      const tn = tDe[C.parentId[k]]; if (!tn) return; const cn = C.colId[k];
+      (labelsT[tn] = labelsT[tn] || {})[cn] = C.label[k]; (typesT[tn] = typesT[tn] || {})[cn] = C.type[k];
+      if (C.visibleCol && C.visibleCol[k] && cDe[C.visibleCol[k]]) (visT[tn] = visT[tn] || {})[cn] = cDe[C.visibleCol[k]];
+    });
+    labels = labelsT[tid] || {}; types = typesT[tid] || {};
   } catch (e) { console.warn('Libellés indisponibles', e); }
   await chargerTable();
 }
@@ -457,6 +524,10 @@ async function chargerTable() {
     const t = await grist.docApi.fetchTable(tid), cols = Object.keys(t).filter(k => k !== 'id' && k !== 'manualSort' && !k.startsWith('gristHelper_')), m = new Map();
     t.id.forEach((id, k) => { const o = {}; cols.forEach(c => { o[c] = t[c][k]; }); m.set(id, o); });
     allCols = cols; donnees = m; erreurAcces = '';
+    const liees = new Set(Object.values(types).map(refDe).filter(Boolean).map(r => r.table));   // tables des colonnes « Référence »
+    for (const x of liees) {
+      try { const rt = await grist.docApi.fetchTable(x), mm = new Map(); rt.id.forEach((id, k) => { const o = { id }; Object.keys(rt).forEach(c => { if (c !== 'id') o[c] = rt[c][k]; }); mm.set(id, o); }); refTabs[x] = mm; } catch (e) { /* table liée illisible */ }
+    }
   } catch (e) { erreurAcces = String((e && e.message) || e); }
 }
 
@@ -502,7 +573,7 @@ function construire() {
   }
   majCluster();
   appliquerFiltres(); appliquerAffichage();
-  if (ficheId !== null) { marqueurs.has(ficheId) ? ouvrirFiche(ficheId, false) : fermerFiche(); }
+  if (ficheId !== null && !lieeOuverte) { marqueurs.has(ficheId) ? ouvrirFiche(ficheId, false) : fermerFiche(); }
   if (premierChargement && marqueurs.size) { recentrer(); premierChargement = false; }
 }
 
@@ -514,7 +585,112 @@ grist.onRecord(rec => {
   if (!ouverte && cluster.hasLayer(m)) montrer(m, () => { map.panTo(m.getLatLng()); m.openPopup(); });
 });
 
-/* ================= FENÊTRE « CONFIGURER LE WIDGET » ================= */
+/* ================= ITINÉRAIRE DE CONTRÔLE ================= */
+const itiPanel = document.createElement('aside'); itiPanel.id = 'iti-panel'; itiPanel.setAttribute('aria-label', 'Préparation d’un itinéraire'); itiPanel.setAttribute('aria-hidden', 'true'); document.body.appendChild(itiPanel);
+const iti = { ids:[], mode:'car', retour:false, depart:null, legs:[], total:null, msg:'' };
+const itiRoute = L.featureGroup().addTo(map), itiPts = L.layerGroup().addTo(map);
+let attendDepart = false;
+const hav = (a, b) => { const t = Math.PI / 180, dl = (b.lat - a.lat) * t, dn = (b.lng - a.lng) * t, x = Math.sin(dl / 2) ** 2 + Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dn / 2) ** 2; return 12742000 * Math.asin(Math.sqrt(x)); };
+const ptDe = id => { const m = marqueurs.get(id); return m ? m.getLatLng() : null; };
+const nomDe = id => { const m = marqueurs.get(id); return m ? (m._cifi.nom || 'Sans nom') : '(supprimé)'; };
+const fmtDist = m => m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(m) + ' m';
+const fmtDuree = s => { const m = Math.round(s / 60); return m >= 60 ? Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') : m + ' min'; };
+function itiReset() { iti.legs = []; iti.total = null; iti.msg = ''; itiRoute.clearLayers(); }
+function itiAjouter(ids) { ids.forEach(id => { if (!iti.ids.includes(id) && marqueurs.has(id)) iti.ids.push(id); }); itiReset(); ouvrirIti(); }
+function ouvrirIti() { fermerFiche(); itiDessiner(); itiPanel.classList.add('ouvert'); itiPanel.setAttribute('aria-hidden', 'false'); }
+function fermerIti() { attendDepart = false; itiPanel.classList.remove('ouvert'); itiPanel.setAttribute('aria-hidden', 'true'); }
+function itiMarques() {
+  itiPts.clearLayers();
+  iti.ids.forEach((id, k) => { const p = ptDe(id); if (p) L.marker(p, { icon:L.divIcon({ className:'', iconSize:[18,18], iconAnchor:[26,26], html:`<div class="iti-num">${k + 1}</div>` }), interactive:false, zIndexOffset:1000 }).addTo(itiPts); });
+  if (iti.depart) L.marker(iti.depart, { icon:L.divIcon({ className:'', iconSize:[24,24], iconAnchor:[4,22], html:'<div style="font-size:22px;line-height:24px">🏁</div>' }), interactive:false, zIndexOffset:1000 }).addTo(itiPts);
+}
+function itiDessiner() {
+  const legDe = k => iti.legs.length ? iti.legs[iti.depart ? k : k - 1] : undefined;
+  const info = l => l === undefined ? '' : l === null ? '<small>Trajet non calculé</small>' : `<small>${fmtDist(l.d)} · ${fmtDuree(l.t)}</small>`;
+  const retourLeg = iti.retour && iti.legs.length ? iti.legs[iti.legs.length - 1] : undefined;
+  itiPanel.innerHTML = `<div class="fp-tete" style="--niv:var(--accent)"><button type="button" class="fp-fermer" data-i="fermer" aria-label="Fermer">✕</button><h2>Itinéraire de contrôle</h2></div>
+    <div class="fp-corps">
+      <div class="iti-ligne"><label><input type="radio" name="itimode" value="car"${iti.mode === 'car' ? ' checked' : ''}> 🚗 Voiture</label><label><input type="radio" name="itimode" value="pedestrian"${iti.mode === 'pedestrian' ? ' checked' : ''}> 🚶 À pied</label></div>
+      <label style="font-size:14px"><input type="checkbox" id="iti-retour"${iti.retour ? ' checked' : ''}> Revenir au point de départ</label>
+      <div style="margin-top:8px;font-size:14px">Départ : ${iti.depart ? '🏁 point choisi sur la carte <button type="button" data-i="deldep" class="iti-btn2">✕</button>' : attendDepart ? '<em>cliquez sur la carte…</em>' : 'premier établissement de la liste'} <button type="button" data-i="dep" class="iti-btn2">Choisir sur la carte</button></div>
+      <div class="iti-actions"><button type="button" data-i="tous">＋ Tous les points visibles</button><button type="button" data-i="opt">Optimiser l’ordre</button><button type="button" data-i="calc" class="prim">Calculer l’itinéraire</button><button type="button" data-i="vider">Vider</button></div>
+      ${iti.msg ? `<p class="vide" style="font-size:13px">${esc(iti.msg)}</p>` : ''}
+      ${iti.ids.length ? `<ol class="iti-liste">${iti.ids.map((id, k) => `<li><span class="num">${k + 1}</span><span>${esc(nomDe(id))}${info(legDe(k))}</span><span><button type="button" data-i="up" data-k="${k}" aria-label="Monter">▲</button> <button type="button" data-i="down" data-k="${k}" aria-label="Descendre">▼</button> <button type="button" data-i="del" data-k="${k}" aria-label="Retirer">✕</button></span></li>`).join('')}${iti.retour && retourLeg !== undefined ? `<li><span class="num">↩</span><span>Retour au départ${info(retourLeg)}</span><span></span></li>` : ''}</ol>` : '<p class="vide">Ajoutez des établissements : bouton « ＋ Itinéraire » dans le popup, ou « Tous les points visibles » (après vos filtres).</p>'}
+      ${iti.total ? `<div class="iti-total">Total : ${fmtDist(iti.total.d)} · ${fmtDuree(iti.total.t)}</div>` : ''}
+    </div><div class="fp-pied"><button type="button" class="iti-btn2" data-i="copier">Copier la feuille de route</button> <button type="button" class="iti-btn2" data-i="imprimer">Imprimer</button></div>`;
+  itiMarques();
+}
+function itiOptimiser() {
+  if (iti.ids.length < 2) return;
+  const dep = iti.depart; let reste = iti.ids.slice(), ordre = [], cur = dep || ptDe(reste[0]);
+  if (!dep) ordre.push(reste.shift());
+  while (reste.length) { let bi = 0, bd = Infinity; reste.forEach((id, i) => { const d = hav(cur, ptDe(id)); if (d < bd) { bd = d; bi = i; } }); const id = reste.splice(bi, 1)[0]; ordre.push(id); cur = ptDe(id); }
+  const longueur = o => { const a = (dep ? [dep] : []).concat(o.map(ptDe)); if (iti.retour) a.push(a[0]); let t = 0; for (let i = 1; i < a.length; i++) t += hav(a[i - 1], a[i]); return t; };
+  let mieux = true, tours = 0;   // amélioration locale (2-opt)
+  while (mieux && tours++ < 40) { mieux = false;
+    for (let i = dep ? 0 : 1; i < ordre.length - 1; i++) for (let j = i + 1; j < ordre.length; j++) {
+      const n = ordre.slice(0, i).concat(ordre.slice(i, j + 1).reverse(), ordre.slice(j + 1));
+      if (longueur(n) < longueur(ordre) - 1) { ordre = n; mieux = true; }
+    } }
+  iti.ids = ordre; itiReset();
+}
+async function itiCalculer() {
+  if (iti.ids.length < (iti.depart ? 1 : 2)) { iti.msg = 'Ajoutez au moins 2 établissements (ou 1 établissement et un départ).'; itiDessiner(); return; }
+  iti.msg = 'Calcul en cours…'; itiDessiner(); itiRoute.clearLayers();
+  const url = String(opt('iti_url', 'https://data.geopf.fr/navigation/itineraire')), res = String(opt('iti_resource', 'bdtopo-osrm'));
+  const pts = (iti.depart ? [iti.depart] : []).concat(iti.ids.map(ptDe)); if (iti.retour) pts.push(pts[0]);
+  const legs = []; let td = 0, tt = 0, ko = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    try {
+      const r = await fetch(`${url}?resource=${encodeURIComponent(res)}&start=${a.lng},${a.lat}&end=${b.lng},${b.lat}&profile=${iti.mode}&optimization=fastest&geometryFormat=geojson&getSteps=false&distanceUnit=meter&timeUnit=second`);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json(), d = (+j.distance || 0) * (j.distanceUnit === 'kilometer' ? 1000 : 1), t = (+j.duration || 0) * (j.timeUnit === 'hour' ? 3600 : j.timeUnit === 'minute' ? 60 : 1);
+      legs.push({ d, t }); td += d; tt += t;
+      if (j.geometry) L.geoJSON(j.geometry, { style:{ color: iti.mode === 'car' ? '#1f4e8c' : '#2a9d8f', weight:5, opacity:.85, dashArray: iti.mode === 'car' ? null : '2 8', lineCap:'round' }, interactive:false }).addTo(itiRoute);
+    } catch (e) { legs.push(null); ko++; }
+    await new Promise(ok => setTimeout(ok, 230));   // le service accepte 5 requêtes par seconde
+  }
+  iti.legs = legs; iti.total = { d:td, t:tt };
+  iti.msg = ko ? `${ko} trajet(s) non calculé(s) : service injoignable ou point hors du réseau routier.` : '';
+  itiDessiner(); if (itiRoute.getLayers().length) map.fitBounds(itiRoute.getBounds(), { padding:[50,50] });
+}
+function itiTexte() {
+  const l = [`Itinéraire de contrôle – ${iti.mode === 'car' ? 'voiture' : 'à pied'}`];
+  iti.ids.forEach((id, k) => { const g = iti.legs.length ? iti.legs[iti.depart ? k : k - 1] : undefined; l.push(`${k + 1}. ${nomDe(id)}${g ? ` (${fmtDist(g.d)}, ${fmtDuree(g.t)})` : ''}`); });
+  if (iti.total) l.push(`Total : ${fmtDist(iti.total.d)}, ${fmtDuree(iti.total.t)}`);
+  return l.join('\n');
+}
+function itiCopier(b) {
+  const txt = itiTexte(), ok = () => { b.textContent = '✓ Copié'; };
+  const secours = () => { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); ok(); } catch (e) { alert(txt); } ta.remove(); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, secours); else secours();
+}
+function itiImprimer() { document.body.classList.add('imprime-iti'); try { window.print(); } finally { document.body.classList.remove('imprime-iti'); } }
+itiPanel.addEventListener('click', e => {
+  const b = e.target.closest('button[data-i]'); if (!b) return; const a = b.dataset.i, k = +b.dataset.k;
+  switch (a) {
+    case 'fermer': fermerIti(); return;
+    case 'tous': itiAjouter([...marqueurs.values()].filter(m => cluster.hasLayer(m)).sort((x, y) => String(x._cifi.nom).localeCompare(String(y._cifi.nom), 'fr')).map(m => m._cifi.id)); return;
+    case 'vider': iti.ids = []; itiReset(); break;
+    case 'up': case 'down': { const j = k + (a === 'up' ? -1 : 1); if (j >= 0 && j < iti.ids.length) { [iti.ids[k], iti.ids[j]] = [iti.ids[j], iti.ids[k]]; itiReset(); } break; }
+    case 'del': iti.ids.splice(k, 1); itiReset(); break;
+    case 'opt': itiOptimiser(); break;
+    case 'calc': itiCalculer(); return;
+    case 'dep': attendDepart = true; map.once('click', e2 => { if (!attendDepart) return; attendDepart = false; iti.depart = e2.latlng; itiReset(); itiDessiner(); }); break;
+    case 'deldep': iti.depart = null; itiReset(); break;
+    case 'copier': itiCopier(b); return;
+    case 'imprimer': itiImprimer(); return;
+    default: return;
+  }
+  itiDessiner();
+});
+itiPanel.addEventListener('change', e => {
+  const t = e.target;
+  if (t.name === 'itimode') { iti.mode = t.value; itiReset(); itiDessiner(); }
+  if (t.id === 'iti-retour') { iti.retour = t.checked; itiReset(); itiDessiner(); }
+});
+
 const modal = document.createElement('div'); modal.id = 'reglages'; document.body.appendChild(modal);
 let onglet = 'points', minuteur, etatSauv = '';
 const listeDe = g => g === 'p' ? cfg.popup : cfg.sections[+g].cols;
@@ -529,7 +705,9 @@ function blocListe(g) {
   return `<ul>${l.map((x, i) => { const at = `data-g="${g}" data-i="${i}"`; return `<li><div class="rg-l1"><span class="nomcol">${esc(libel(x.c))}</span>${btn('up', at, '▲', 'Monter')}${btn('down', at, '▼', 'Descendre')}${btn('del', at, '✕', 'Retirer')}</div>
     <div class="rg-l2"><input type="text" value="${esc(x.nom)}" placeholder="Nom affiché (par défaut : ${esc(libel(x.c))})" data-a="lib" ${at} aria-label="Nom affiché"></div>
     <div class="rg-l2"><b class="rg-lab">Nom</b>${cb('gn', at, x.gn, 'gras')}${cb('gi', at, x.gi, 'italique')}<b class="rg-lab">Valeur</b>${cb('vg', at, x.vg, 'gras')}${cb('vi', at, x.vi, 'italique')}${cb('vb', at, x.vb, 'pastille')}
-    <select data-a="ta" ${at} aria-label="Taille du texte">${[['', 'Taille normale'], ['p', 'Petite'], ['g', 'Grande'], ['tg', 'Très grande']].map(([v, t]) => `<option value="${v}"${(x.ta || '') === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div></li>`; }).join('')}</ul>
+    <select data-a="ta" ${at} aria-label="Taille du texte">${[['', 'Taille normale'], ['p', 'Petite'], ['g', 'Grande'], ['tg', 'Très grande']].map(([v, t]) => `<option value="${v}"${(x.ta || '') === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
+    <div class="rg-l2"><label><input type="checkbox" data-a="cn-on" ${at}${x.cn ? ' checked' : ''}> Couleur du nom</label><input type="color" data-a="cn" ${at} value="${x.cn || '#1d2733'}"${x.cn ? '' : ' disabled'} aria-label="Couleur du nom">
+      <label><input type="checkbox" data-a="cw-on" ${at}${x.cw ? ' checked' : ''}> Couleur de la valeur</label><input type="color" data-a="cw" ${at} value="${x.cw || '#1d2733'}"${x.cw ? '' : ' disabled'} aria-label="Couleur de la valeur"></div></li>`; }).join('')}</ul>
     <select data-a="add" data-g="${g}" aria-label="Ajouter une colonne"><option value="">+ Ajouter une colonne…</option>${dispo.map(c => `<option value="${esc(c)}">${esc(libel(c))}</option>`).join('')}</select>`;
 }
 function carteRegle(r, i) {
@@ -543,7 +721,10 @@ function carteRegle(r, i) {
     <div class="rg-l2"><label><input type="checkbox" data-a="rc-on" ${R}${r.couleur ? ' checked' : ''}> Couleur</label><input type="color" data-a="rc" ${R} value="${r.couleur || '#c1121f'}"${r.couleur ? '' : ' disabled'} aria-label="Couleur">
       <label><input type="checkbox" data-a="rf-on" ${R}${r.forme ? ' checked' : ''}> Forme</label>${selForme(`data-a="rf" ${R}`, r.forme || 'rond', !r.forme)}</div>
     <div class="rg-l2"><label>Sur le point :</label><select data-a="rct" ${R} aria-label="Contenu du point"><option value=""${!r.contenu.t ? ' selected' : ''}>Rien</option><option value="emoji"${r.contenu.t === 'emoji' ? ' selected' : ''}>Un emoji ou un texte</option><option value="valeur"${r.contenu.t === 'valeur' ? ' selected' : ''}>La valeur d’une colonne</option></select>
-      ${r.contenu.t === 'emoji' ? `<input type="text" data-a="re" ${R} value="${esc(r.contenu.e)}" placeholder="ex. ✅" style="max-width:90px" aria-label="Emoji">` : r.contenu.t === 'valeur' ? selCol(`data-a="rcc" ${R}`, r.contenu.c) : ''}</div></div></details>`;
+      ${r.contenu.t === 'emoji' ? `<input type="text" data-a="re" ${R} value="${esc(r.contenu.e)}" placeholder="ex. ✅" style="max-width:90px" aria-label="Emoji">` : r.contenu.t === 'valeur' ? selCol(`data-a="rcc" ${R}`, r.contenu.c)     : ''}</div>
+    <div class="rg-l2"><label>Bulle :</label><select data-a="rbt" ${R} aria-label="Bulle"><option value=""${!r.bulle.t ? ' selected' : ''}>Aucune</option><option value="coin"${r.bulle.t === 'coin' ? ' selected' : ''}>Pastille dans le coin du point</option><option value="texte"${r.bulle.t === 'texte' ? ' selected' : ''}>Bulle de texte à côté du point</option><option value="signal"${r.bulle.t === 'signal' ? ' selected' : ''}>Signal pulsé seul</option></select>
+      ${r.bulle.t && r.bulle.t !== 'signal' ? `<select data-a="rbs" ${R} aria-label="Contenu de la bulle"><option value=""${!r.bulle.src ? ' selected' : ''}>Texte fixe</option><option value="col"${r.bulle.src === 'col' ? ' selected' : ''}>Valeur d’une colonne</option></select>` + (r.bulle.src === 'col' ? selCol(`data-a="rbc" ${R}`, r.bulle.c) : `<input type="text" data-a="rbe" ${R} value="${esc(r.bulle.e)}" placeholder="ex. ! ou À contrôler" style="max-width:150px" aria-label="Texte de la bulle">`) : ''}
+      ${r.bulle.t ? `<input type="color" data-a="rbk" ${R} value="${r.bulle.couleur}" aria-label="Couleur de la bulle">` + (r.bulle.t !== 'signal' ? `<label><input type="checkbox" data-a="rbp" ${R}${r.bulle.pulse ? ' checked' : ''}> pulsé</label>` : '') : ''}</div></div></details>`;
 }
 function contenuOnglet() {
   if (onglet === 'points') return `<section><h3>Style par défaut des points</h3><div class="rg-l2"><label>Couleur <input type="color" data-a="defc" value="${cfg.defaut.couleur}"></label><label>Forme ${selForme('data-a="deff"', cfg.defaut.forme)}</label></div></section>
@@ -552,9 +733,11 @@ function contenuOnglet() {
   if (onglet === 'popup') return `<section><h3>Colonnes du popup (clic sur un point)</h3>${blocListe('p')}</section>`;
   if (onglet === 'fiche') return cfg.sections.map((sec, i) => `<section><div class="rg-sec"><input type="text" value="${esc(sec.nom)}" data-a="nom" data-g="${i}" aria-label="Nom de la section" placeholder="Nom de la section">${btn('sup', `data-g="${i}"`, '▲', 'Monter')}${btn('sdown', `data-g="${i}"`, '▼', 'Descendre')}${btn('sdel', `data-g="${i}"`, 'Supprimer')}</div>${blocListe(String(i))}</section>`).join('') + '<button type="button" class="rg-ajout" data-a="sadd">+ Ajouter une section</button>';
   const sl = (n, ch) => `<select data-o="${n}">${ch.map(c => `<option${opt(n, ch[0]) === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
-  const elts = [['q', 'Recherche par nom'], ['filtres', 'Filtres'], ['compteurs', 'Compteurs'], ['liste', 'Liste des établissements'], ['tout', 'Bouton « Voir tous les points »'], ['legende', 'Légende'], ['commune', 'Recherche de commune (en haut à droite de la carte)']];
+  const elts = [['q', 'Recherche par nom'], ['filtres', 'Filtres'], ['compteurs', 'Compteurs'], ['liste', 'Liste des établissements'], ['tout', 'Bouton « Voir tous les points »'], ['legende', 'Légende'], ['iti', 'Bouton « Préparer un itinéraire »'], ['commune', 'Recherche de commune (en haut à droite de la carte)']];
   return `<section><h3>Éléments du panneau de gauche</h3><p class="vide" style="font-size:12px;margin:0 0 4px">Cochez les éléments à proposer à vos utilisateurs. La liste et la légende peuvent aussi être dépliées ou repliées par défaut.</p>
     ${elts.map(([k, t]) => `<label><input type="checkbox" data-o="aff_${k}"${opt('aff_' + k, true) !== false ? ' checked' : ''}> ${t} affiché${k === 'liste' || k === 'legende' ? `<span style="margin-left:18px"><input type="checkbox" data-o="ouv_${k}"${(k === 'liste' ? opt('ouv_liste', false) === true : opt('ouv_legende', true) !== false) ? ' checked' : ''}> déplié par défaut</span>` : ''}</label>`).join('')}</section>
+    <section><h3>Itinéraire</h3><label>Adresse du service de calcul d’itinéraire <input type="text" data-o="iti_url" value="${esc(opt('iti_url', 'https://data.geopf.fr/navigation/itineraire'))}"></label>
+    <label>Ressource <input type="text" data-o="iti_resource" value="${esc(opt('iti_resource', 'bdtopo-osrm'))}"></label></section>
     <section><h3>Fiche et points</h3><label>Sections dépliées à l’ouverture ${sl('ouverture', ['Première section', 'Toutes', 'Aucune'])}</label>
     <label>Regroupement des points ${sl('regroupement', [MODE_PROCHES, MODE_AUCUN, MODE_CLASSIQUE])}</label>
     <label>Distance de regroupement (points plus proches que cette distance) <input type="number" min="5" max="5000" step="5" data-o="distance_m" value="${+opt('distance_m', 100)}"> m</label>
@@ -614,6 +797,16 @@ modal.addEventListener('change', e => {
     case 'lib': listeDe(g)[i].nom = t.value; break;
     case 'gn': case 'gi': case 'vg': case 'vi': case 'vb': listeDe(g)[i][a] = t.checked; break;
     case 'ta': listeDe(g)[i].ta = t.value; break;
+    case 'cn-on': listeDe(g)[i].cn = t.checked ? '#1d2733' : ''; break;
+    case 'cn': listeDe(g)[i].cn = t.value; break;
+    case 'cw-on': listeDe(g)[i].cw = t.checked ? '#1d2733' : ''; break;
+    case 'cw': listeDe(g)[i].cw = t.value; break;
+    case 'rbt': R.bulle.t = t.value; break;
+    case 'rbs': R.bulle.src = t.value; break;
+    case 'rbc': R.bulle.c = t.value; break;
+    case 'rbe': R.bulle.e = t.value; break;
+    case 'rbk': R.bulle.couleur = t.value; break;
+    case 'rbp': R.bulle.pulse = t.checked; break;
     case 'nom': cfg.sections[+g].nom = t.value; break;
     case 'defc': cfg.defaut.couleur = t.value; break;
     case 'deff': cfg.defaut.forme = t.value; break;
@@ -630,7 +823,7 @@ modal.addEventListener('change', e => {
     case 'cv': R.si[k].v = t.value; break;
     default: return;
   }
-  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co'].includes(a));
+  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs'].includes(a));
 });
 modal.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.regle') && cfg.regles[+d.dataset.r]) cfg.regles[+d.dataset.r].o = d.open; }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('ouvert'); });
