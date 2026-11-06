@@ -193,6 +193,10 @@
   .fiche .sous, .fp-tete .sous { font-size:12px; opacity:.85; margin:-2px 0 6px; }
   .dans-panneau { box-shadow:none !important; border:0 !important; padding:0 !important; margin-bottom:8px; background:none !important; } .dans-panneau input { width:100%; }
   #liste .sw { display:flex; justify-content:center; flex:none; width:26px; } #liste .pin { border-width:2px; }
+  .panel.gauche { display:flex; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; -webkit-overflow-scrolling:touch; }
+  .panel.gauche > * { flex:none; } .panel.gauche > button.link, .panel.gauche #b-liste > button.link { align-self:flex-start; margin-top:4px; }
+  #b-liste { margin-top:4px; } .panel.reduit > :not(#reduire) { display:none !important; }
+  .rg-ord { border-bottom:1px solid #eef1f5; }
 </style>
 </head>
 <body>
@@ -201,7 +205,7 @@
 <aside id="fiche-panel" aria-label="Fiche de l’établissement" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '19';
+const VERSION = '20';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const swatch = (f, c, t) => `<span class="sw"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};width:22px;height:22px;font-size:${String(t || '').length > 2 ? 8 : 12}px"><span>${esc(t || '')}</span></span></span>`;
@@ -238,9 +242,12 @@ const nEntree = x => ({ c:x.c, nom:x.nom || '', gn:x.gn ?? !!x.gras, gi:!!x.gi, 
 const nRegle = r => ({ o:r.o === true, nom:r.nom || '', si:(r.si || []).map(k => ({ c:k.c || '', op:k.op || '=', v:k.v ?? '' })), couleur:r.couleur || '', forme:r.forme || '',
   contenu:{ t:(r.contenu && r.contenu.t) || '', e:(r.contenu && r.contenu.e) || '', c:(r.contenu && r.contenu.c) || '' },
   bulle:{ t:(r.bulle && r.bulle.t) || '', src:(r.bulle && r.bulle.src) || '', e:(r.bulle && r.bulle.e) || '', c:(r.bulle && r.bulle.c) || '', couleur:/^#[0-9a-f]{6}$/i.test((r.bulle && r.bulle.couleur) || '') ? r.bulle.couleur : '#c1121f', pulse:!!(r.bulle && r.bulle.pulse) } });
+const ELTS_GAUCHE = { commune:'Recherche de commune (si placée dans le panneau)', q:'Recherche par nom', filtres:'Filtres', compteurs:'Compteurs', count:'Nombre d’établissements affichés', liste:'Liste des établissements', tout:'Bouton « Voir tous les points »', iti:'Bouton « Préparer un itinéraire »', legende:'Légende' };
+const normOrdre = o => { const a = (Array.isArray(o) ? o : []).filter((k, i, t) => ELTS_GAUCHE[k] && t.indexOf(k) === i); Object.keys(ELTS_GAUCHE).forEach(k => { if (!a.includes(k)) a.push(k); }); return a; };
+const LIB = { q:['lib_q', 'Rechercher un nom…'], liste:['lib_liste', 'Afficher la liste des établissements'], tout:['lib_tout', 'Voir tous les points'], iti:['lib_iti', '🧭 Préparer un itinéraire'], legende:['lib_legende', 'Légende'] };
 const hex = c => /^#[0-9a-f]{6}$/i.test(c || '') ? c : '';
 const nEnt = h => { h = h || {}; return { titre:h.titre || '', sous:h.sous || '', etiq:h.etiq !== false, fond:['neutre', 'point', 'perso'].includes(h.fond) ? h.fond : 'neutre', fondc:hex(h.fondc) || '#f6f8fb', txtc:hex(h.txtc), taille:+h.taille || 0 }; };
-const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(s => ({ nom:s.nom || '', cols:(s.cols || []).map(nEntree) })), regles:(c.regles || []).map(nRegle), defaut:{ ...DEFAUT, ...(c.defaut || {}) }, entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) } }; };
+const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(s => ({ nom:s.nom || '', cols:(s.cols || []).map(nEntree) })), regles:(c.regles || []).map(nRegle), defaut:{ ...DEFAUT, ...(c.defaut || {}) }, entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, ordre:normOrdre(c.ordre) }; };
 let opts = {}, cfg = norm(), lastRec = null, lastMap = null, labels = {}, types = {}, allCols = [], donnees = new Map(), tid = null, erreurAcces = '', labelsCharges = false, labelsT = {}, typesT = {}, visT = {}, refTabs = {}, lieeOuverte = false;
 let recherche = '', premierChargement = true, idSelectionne = null, ficheId = null, sansGps = 0, regroupPrec = true, sigFiltres = '', listeOuverte = false, cptCols = [], sigAff = '', legOuverte = true, legCats = [];
 const marqueurs = new Map(), masques = new Set(), filtreSel = {}, etatSections = new Map();
@@ -366,14 +373,15 @@ function montrer(m, cb) { if (cluster.zoomToShowLayer) montrer(m, cb); else { ma
 
 const haut = L.control({ position:'topleft' });
 haut.onAdd = () => {
-  const d = L.DomUtil.create('div', 'panel');
-  d.innerHTML = `<div id="commune-zone"></div><input type="search" id="q" placeholder="Rechercher un nom…" aria-label="Rechercher un établissement">
+  const d = L.DomUtil.create('div', 'panel gauche');
+  d.innerHTML = `<button class="link" id="reduire" type="button" aria-expanded="true" style="order:-1">▴ Réduire le panneau</button><div id="commune-zone"></div><input type="search" id="q" placeholder="Rechercher un nom…" aria-label="Rechercher un établissement">
     <div id="filtres"></div><div id="compteurs"></div><div class="count" id="count"></div>
-    <button class="link" id="liste-btn" type="button" aria-expanded="false">Afficher la liste des établissements</button><div id="liste" style="display:none"></div><br>
-    <button class="link" id="tout" type="button">Voir tous les points</button><br><button class="link" id="iti-btn" type="button">🧭 Préparer un itinéraire</button><div class="legend" id="legende"></div><div id="cfg-secours"></div>`;
+    <div id="b-liste"><button class="link" id="liste-btn" type="button" aria-expanded="false">Afficher la liste des établissements</button><div id="liste" style="display:none"></div></div>
+    <button class="link" id="tout" type="button">Voir tous les points</button><button class="link" id="iti-btn" type="button">🧭 Préparer un itinéraire</button><div class="legend" id="legende"></div><div id="cfg-secours"></div>`;
   L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
   d.querySelector('#q').addEventListener('input', e => { recherche = sansAccent(e.target.value.trim()); appliquerFiltres(); });
   d.querySelector('#tout').addEventListener('click', recentrer);
+  d.querySelector('#reduire').addEventListener('click', e => { const r = d.classList.toggle('reduit'); e.target.setAttribute('aria-expanded', String(!r)); e.target.textContent = r ? '▾ Déplier le panneau' : '▴ Réduire le panneau'; });
   d.querySelector('#iti-btn').addEventListener('click', () => ouvrirIti());
   d.querySelector('#filtres').addEventListener('change', e => {
     const c = e.target.dataset.c; if (!c) return; const det = e.target.closest('details');
@@ -401,17 +409,22 @@ function allerA(id) {
 function recentrer() { const p = [...marqueurs.values()].filter(m => cluster.hasLayer(m)).map(m => m.getLatLng()); if (p.length) map.fitBounds(p, { padding:[40,40], maxZoom:17 }); }
 function majLegende() {
   const z = document.getElementById('legende'); if (!z) return;
-  z.innerHTML = legCats.length ? `<hr><button type="button" id="leg-toggle" class="titre" aria-expanded="${legOuverte}"><strong>Légende</strong> <span>${legOuverte ? '▾' : '▸'}</span></button>` +
+  z.innerHTML = legCats.length ? `<hr><button type="button" id="leg-toggle" class="titre" aria-expanded="${legOuverte}"><strong>${esc(opt('lib_legende', 'Légende'))}</strong> <span>${legOuverte ? '▾' : '▸'}</span></button>` +
     (legOuverte ? legCats.map(c => `<button type="button" data-k="${esc(c.k)}" aria-pressed="${!masques.has(c.k)}">${swatch(c.forme, c.couleur, c.emoji)}${esc(c.label)}</button>`).join('') : '') : '';
 }
 function setListe(ouvert) {
   const b = document.getElementById('liste-btn'), l = document.getElementById('liste'); if (!b || !l) return;
   listeOuverte = ouvert; b.setAttribute('aria-expanded', String(ouvert));
-  b.textContent = ouvert ? 'Masquer la liste des établissements' : 'Afficher la liste des établissements';
+  b.textContent = ouvert ? opt('lib_liste2', 'Masquer la liste des établissements') : opt('lib_liste', LIB.liste[1]);
   l.style.display = ouvert ? 'block' : 'none'; majListe();
 }
 function appliquerAffichage() {   // éléments du panneau de gauche affichés ou masqués, selon la configuration générale
   const A = k => opt('aff_' + k, true) !== false, show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
+  const ids = { commune:'commune-zone', q:'q', filtres:'filtres', compteurs:'compteurs', count:'count', liste:'b-liste', tout:'tout', iti:'iti-btn', legende:'legende' };
+  cfg.ordre.forEach((k, i) => { const e = document.getElementById(ids[k]); if (e) e.style.order = i; });
+  const qq = document.getElementById('q'); if (qq) qq.placeholder = opt('lib_q', LIB.q[1]);
+  const tt = document.getElementById('tout'); if (tt) tt.textContent = opt('lib_tout', LIB.tout[1]);
+  const ib = document.getElementById('iti-btn'); if (ib) ib.textContent = opt('lib_iti', LIB.iti[1]);
   show('q', A('q')); show('filtres', A('filtres')); show('compteurs', A('compteurs')); show('tout', A('tout')); show('legende', A('legende')); show('commune-ctl', A('commune')); show('iti-btn', A('iti')); placerCommune();
   const racine = document.documentElement;
   if (racine && racine.style) { racine.style.setProperty('--police', POLICES[opt('police', 'Système (par défaut)')] || POLICES['Système (par défaut)']); racine.style.setProperty('--fs-popup', (+opt('taille_popup', 13) || 13) + 'px'); racine.style.setProperty('--fs-fiche', (+opt('taille_fiche', 14) || 14) + 'px'); } show('liste-btn', A('liste'));
@@ -787,8 +800,10 @@ function contenuOnglet() {
   if (onglet === 'fiche') return blocEntete('fiche') + cfg.sections.map((sec, i) => `<section><div class="rg-sec"><input type="text" value="${esc(sec.nom)}" data-a="nom" data-g="${i}" aria-label="Nom de la section" placeholder="Nom de la section">${btn('sup', `data-g="${i}"`, '▲', 'Monter')}${btn('sdown', `data-g="${i}"`, '▼', 'Descendre')}${btn('sdel', `data-g="${i}"`, 'Supprimer')}</div>${blocListe(String(i))}</section>`).join('') + '<button type="button" class="rg-ajout" data-a="sadd">+ Ajouter une section</button>';
   const sl = (n, ch) => `<select data-o="${n}">${ch.map(c => `<option${opt(n, ch[0]) === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
   const elts = [['q', 'Recherche par nom'], ['filtres', 'Filtres'], ['compteurs', 'Compteurs'], ['liste', 'Liste des établissements'], ['tout', 'Bouton « Voir tous les points »'], ['legende', 'Légende'], ['iti', 'Bouton « Préparer un itinéraire »'], ['commune', 'Recherche de commune (en haut à droite de la carte)']];
-  return `<section><h3>Éléments du panneau de gauche</h3><p class="vide" style="font-size:12px;margin:0 0 4px">Cochez les éléments à proposer à vos utilisateurs. La liste et la légende peuvent aussi être dépliées ou repliées par défaut.</p>
-    ${elts.map(([k, t]) => `<label><input type="checkbox" data-o="aff_${k}"${opt('aff_' + k, true) !== false ? ' checked' : ''}> ${t} affiché${k === 'liste' || k === 'legende' ? `<span style="margin-left:18px"><input type="checkbox" data-o="ouv_${k}"${(k === 'liste' ? opt('ouv_liste', false) === true : opt('ouv_legende', true) !== false) ? ' checked' : ''}> déplié par défaut</span>` : ''}</label>`).join('')}</section>
+  return `<section><h3>Éléments du panneau de gauche</h3><p class="vide" style="font-size:12px;margin:0 0 4px">Cochez les éléments à proposer, changez leur ordre avec ▲ ▼ et modifiez leurs textes. Le panneau défile si les éléments dépassent la hauteur du widget.</p>
+    <ul>${cfg.ordre.map(k => { const E = `data-e="${k}"`, L_ = LIB[k]; return `<li class="rg-ord"><div class="rg-l1"><label><input type="checkbox" data-o="aff_${k}"${opt('aff_' + k, true) !== false ? ' checked' : ''}> <b>${ELTS_GAUCHE[k]}</b></label>${btn('ord-up', E, '▲', 'Monter')}${btn('ord-down', E, '▼', 'Descendre')}</div>
+      ${L_ ? `<div class="rg-l2"><input type="text" data-o="${L_[0]}" value="${esc(opt(L_[0], L_[1]))}" placeholder="Texte affiché" aria-label="Texte : ${esc(ELTS_GAUCHE[k])}">${k === 'liste' ? `<input type="text" data-o="lib_liste2" value="${esc(opt('lib_liste2', 'Masquer la liste des établissements'))}" placeholder="Texte quand la liste est ouverte" aria-label="Texte quand la liste est ouverte">` : ''}</div>` : ''}
+      ${k === 'liste' || k === 'legende' ? `<div class="rg-l2"><label><input type="checkbox" data-o="ouv_${k}"${(k === 'liste' ? opt('ouv_liste', false) === true : opt('ouv_legende', true) !== false) ? ' checked' : ''}> déplié par défaut</label></div>` : ''}</li>`; }).join('')}</ul></section>
     <section><h3>Apparence</h3>
     <label>Police d’écriture ${sl('police', Object.keys(POLICES))}</label>
     <p class="vide" style="font-size:12px;margin:0 0 4px">La police Marianne s’affiche si elle est installée sur le poste, ou si ses fichiers sont placés dans le dossier lib/fonts du widget.</p>
@@ -839,6 +854,7 @@ modal.addEventListener('click', e => {
     case 'rdel': cfg.regles.splice(r, 1); break;
     case 'cadd': cfg.regles[r].si.push({ c:'', op:'=', v:'' }); break;
     case 'cdel': cfg.regles[r].si.splice(k, 1); break;
+    case 'ord-up': case 'ord-down': { const i = cfg.ordre.indexOf(b.dataset.e), j = i + (a === 'ord-up' ? -1 : 1); if (i >= 0 && j >= 0 && j < cfg.ordre.length) [cfg.ordre[i], cfg.ordre[j]] = [cfg.ordre[j], cfg.ordre[i]]; break; }
     default: return;
   }
   sauver();
