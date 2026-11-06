@@ -205,13 +205,13 @@
 <aside id="fiche-panel" aria-label="Fiche de l’établissement" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '20';
+const VERSION = '21';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
-const swatch = (f, c, t) => `<span class="sw"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};width:22px;height:22px;font-size:${String(t || '').length > 2 ? 8 : 12}px"><span>${esc(t || '')}</span></span></span>`;
+const swatch = (f, c, t, bc, be) => `<span class="sw"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * 0.7))}px solid ${bc};`) : ''}width:22px;height:22px;font-size:${String(t || '').length > 2 ? 8 : 12}px"><span>${esc(t || '')}</span></span></span>`;
 const STYLES = { '':'Valeur normale', 'b':'Valeur en gras', 'i':'Valeur en italique', 'badge':'Valeur en pastille' };
 const OPS = [['=','est égal à'],['≠','est différent de'],['contient','contient'],['>','est supérieur à'],['<','est inférieur à'],['vide','est vide'],['rempli','n’est pas vide']];
-const DEFAUT = { couleur:'#1f4e8c', forme:'rond' };
+const DEFAUT = { couleur:'#1f4e8c', forme:'rond', bordc:'#ffffff', borde:3 };
 const POLICES = { 'Système (par défaut)':'system-ui,"Segoe UI",Roboto,sans-serif', 'Marianne':'Marianne,Arial,sans-serif', 'Arial':'Arial,Helvetica,sans-serif', 'Verdana':'Verdana,Geneva,sans-serif', 'Georgia':'Georgia,serif', 'Trebuchet MS':'"Trebuchet MS",Helvetica,sans-serif' };
 const LISTE_MODES = ['Forme et couleur du point', 'Pastille de couleur', 'Emoji ou texte du point', 'Valeur d’une colonne', 'Rien'];
 const POS_COMMUNE = ['Haut à droite', 'Bas à droite', 'Bas à gauche', 'Haut à gauche', 'Dans le panneau de gauche'];
@@ -239,7 +239,7 @@ const afficherMsg = h => { const m = document.getElementById('msg'); m.innerHTML
 
 /* ================= ÉTAT ================= */
 const nEntree = x => ({ c:x.c, nom:x.nom || '', gn:x.gn ?? !!x.gras, gi:!!x.gi, vg:x.vg ?? x.vs === 'b', vi:x.vi ?? x.vs === 'i', vb:x.vb ?? x.vs === 'badge', ta:x.ta || '', cn:x.cn || '', cw:x.cw || '' });
-const nRegle = r => ({ o:r.o === true, nom:r.nom || '', si:(r.si || []).map(k => ({ c:k.c || '', op:k.op || '=', v:k.v ?? '' })), couleur:r.couleur || '', forme:r.forme || '',
+const nRegle = r => ({ o:r.o === true, nom:r.nom || '', si:(r.si || []).map(k => ({ c:k.c || '', op:k.op || '=', v:k.v ?? '' })), couleur:r.couleur || '', forme:r.forme || '', bordc:hex(r.bordc), borde:Math.max(0, Math.min(8, +r.borde || 0)),
   contenu:{ t:(r.contenu && r.contenu.t) || '', e:(r.contenu && r.contenu.e) || '', c:(r.contenu && r.contenu.c) || '' },
   bulle:{ t:(r.bulle && r.bulle.t) || '', src:(r.bulle && r.bulle.src) || '', e:(r.bulle && r.bulle.e) || '', c:(r.bulle && r.bulle.c) || '', couleur:/^#[0-9a-f]{6}$/i.test((r.bulle && r.bulle.couleur) || '') ? r.bulle.couleur : '#c1121f', pulse:!!(r.bulle && r.bulle.pulse) } });
 const ELTS_GAUCHE = { commune:'Recherche de commune (si placée dans le panneau)', q:'Recherche par nom', filtres:'Filtres', compteurs:'Compteurs', count:'Nombre d’établissements affichés', liste:'Liste des établissements', tout:'Bouton « Voir tous les points »', iti:'Bouton « Préparer un itinéraire »', legende:'Légende' };
@@ -247,7 +247,8 @@ const normOrdre = o => { const a = (Array.isArray(o) ? o : []).filter((k, i, t) 
 const LIB = { q:['lib_q', 'Rechercher un nom…'], liste:['lib_liste', 'Afficher la liste des établissements'], tout:['lib_tout', 'Voir tous les points'], iti:['lib_iti', '🧭 Préparer un itinéraire'], legende:['lib_legende', 'Légende'] };
 const hex = c => /^#[0-9a-f]{6}$/i.test(c || '') ? c : '';
 const nEnt = h => { h = h || {}; return { titre:h.titre || '', sous:h.sous || '', etiq:h.etiq !== false, fond:['neutre', 'point', 'perso'].includes(h.fond) ? h.fond : 'neutre', fondc:hex(h.fondc) || '#f6f8fb', txtc:hex(h.txtc), taille:+h.taille || 0 }; };
-const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(s => ({ nom:s.nom || '', cols:(s.cols || []).map(nEntree) })), regles:(c.regles || []).map(nRegle), defaut:{ ...DEFAUT, ...(c.defaut || {}) }, entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, ordre:normOrdre(c.ordre) }; };
+const nDef = d => { d = d || {}; return { couleur:hex(d.couleur) || DEFAUT.couleur, forme:FORMES.includes(d.forme) ? d.forme : DEFAUT.forme, bordc:hex(d.bordc) || DEFAUT.bordc, borde:(d.borde === undefined || d.borde === null || isNaN(+d.borde)) ? DEFAUT.borde : Math.max(0, Math.min(8, +d.borde)) }; };
+const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(s => ({ nom:s.nom || '', cols:(s.cols || []).map(nEntree) })), regles:(c.regles || []).map(nRegle), defaut:nDef(c.defaut), entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, ordre:normOrdre(c.ordre) }; };
 let opts = {}, cfg = norm(), lastRec = null, lastMap = null, labels = {}, types = {}, allCols = [], donnees = new Map(), tid = null, erreurAcces = '', labelsCharges = false, labelsT = {}, typesT = {}, visT = {}, refTabs = {}, lieeOuverte = false;
 let recherche = '', premierChargement = true, idSelectionne = null, ficheId = null, sansGps = 0, regroupPrec = true, sigFiltres = '', listeOuverte = false, cptCols = [], sigAff = '', legOuverte = true, legCats = [];
 const marqueurs = new Map(), masques = new Set(), filtreSel = {}, etatSections = new Map();
@@ -292,16 +293,17 @@ function test(k, vals) {
 const regleActive = r => r.si.length && r.si.every(k => k.c);
 const nomRegle = r => r.nom.trim() || (r.si[0] && r.si[0].c ? `${libel(r.si[0].c)} ${(OPS.find(o => o[0] === r.si[0].op) || [])[0] || ''} ${r.si[0].v || ''}`.trim() : 'Règle');
 function styleDe(vals) {
-  let couleur = null, forme = null, contenu = null, bulle = null, cat = -1; const regles = [];
+  let couleur = null, forme = null, contenu = null, bulle = null, bordc = null, borde = null, cat = -1; const regles = [];
   cfg.regles.forEach((r, i) => {
     if (!regleActive(r) || !r.si.every(k => test(k, vals))) return;
     regles.push(i); if (cat < 0) cat = i;
     if (couleur === null && r.couleur) couleur = r.couleur;
     if (forme === null && r.forme) forme = r.forme;
+    if (bordc === null && r.bordc) { bordc = r.bordc; borde = r.borde; }
     if (bulle === null && r.bulle.t) bulle = { t:r.bulle.t, couleur:r.bulle.couleur, pulse:r.bulle.t === 'signal' || r.bulle.pulse, txt: r.bulle.t === 'signal' ? '' : r.bulle.src === 'col' ? String(fmt(r.bulle.c, vals[r.bulle.c]) ?? '').slice(0, 24) : r.bulle.e };
     if (contenu === null && r.contenu.t) contenu = r.contenu.t === 'emoji' ? r.contenu.e : (r.contenu.c ? String(fmt(r.contenu.c, vals[r.contenu.c]) ?? '').slice(0, 6) : '');
   });
-  return { couleur: couleur || cfg.defaut.couleur, forme: forme || cfg.defaut.forme, contenu: contenu || '', bulle, cat, regles };
+  return { couleur: couleur || cfg.defaut.couleur, forme: forme || cfg.defaut.forme, contenu: contenu || '', bulle, bordc: bordc || cfg.defaut.bordc, borde: bordc ? borde : cfg.defaut.borde, cat, regles };
 }
 
 /* ================= CARTE ET PANNEAU DE GAUCHE ================= */
@@ -410,7 +412,7 @@ function recentrer() { const p = [...marqueurs.values()].filter(m => cluster.has
 function majLegende() {
   const z = document.getElementById('legende'); if (!z) return;
   z.innerHTML = legCats.length ? `<hr><button type="button" id="leg-toggle" class="titre" aria-expanded="${legOuverte}"><strong>${esc(opt('lib_legende', 'Légende'))}</strong> <span>${legOuverte ? '▾' : '▸'}</span></button>` +
-    (legOuverte ? legCats.map(c => `<button type="button" data-k="${esc(c.k)}" aria-pressed="${!masques.has(c.k)}">${swatch(c.forme, c.couleur, c.emoji)}${esc(c.label)}</button>`).join('') : '') : '';
+    (legOuverte ? legCats.map(c => `<button type="button" data-k="${esc(c.k)}" aria-pressed="${!masques.has(c.k)}">${swatch(c.forme, c.couleur, c.emoji, c.bordc, c.borde)}${esc(c.label)}</button>`).join('') : '') : '';
 }
 function setListe(ouvert) {
   const b = document.getElementById('liste-btn'), l = document.getElementById('liste'); if (!b || !l) return;
@@ -438,7 +440,7 @@ function devant(d) {
   if (mode === LISTE_MODES[1]) return `<i style="background:${s.couleur}"></i>`;
   if (mode === LISTE_MODES[2]) return `<span class="sw" style="font-size:15px">${esc(s.contenu || '•')}</span>`;
   if (mode === LISTE_MODES[3]) { const c = opt('liste_col', ''), v = c ? fmt(c, d.vals[c]) : null; return `<span class="sw" style="width:auto;max-width:90px;font-size:11px;color:var(--muted)">${esc(v ?? '')}</span>`; }
-  return swatch(s.forme, s.couleur, s.contenu);
+  return swatch(s.forme, s.couleur, s.contenu, s.bordc, s.borde);
 }
 function majListe() {
   if (!listeOuverte) return;
@@ -467,7 +469,7 @@ function icone(d, sel) {
     if (b.t === 'texte') apres = `<span class="bul txt" style="background:${b.couleur};color:${k};--bc:${b.couleur};left:${t + 9}px;top:${Math.round(t / 2 - 11)}px">${esc(b.txt)}</span>`;
   }
   return L.divIcon({ className:'', iconSize:[t,t], iconAnchor: g ? [t/2, Math.round(t * 1.2)] : [t/2, t/2], popupAnchor: g ? [0, -Math.round(t * 1.25)] : [0, -t/2],
-    html: avant + `<div class="pin f-${s.forme}${sel ? ' sel' : ''}${sombre(s.couleur) ? ' sombre' : ''}" style="background:${s.couleur};width:${t}px;height:${t}px;font-size:${c.length > 2 ? 10 : Math.round(t * 0.5)}px"><span>${esc(c)}</span></div>` + apres });
+    html: avant + `<div class="pin f-${s.forme}${sel ? ' sel' : ''}${sombre(s.couleur) ? ' sombre' : ''}" style="background:${s.couleur};${s.forme !== 'triangle' ? `border:${s.borde}px solid ${s.bordc};` : ''}width:${t}px;height:${t}px;font-size:${c.length > 2 ? 10 : Math.round(t * 0.5)}px"><span>${esc(c)}</span></div>` + apres });
 }
 
 /* ================= FICHES ================= */
@@ -614,8 +616,8 @@ function construire() {
   });
   for (const [id, x] of [...marqueurs]) if (!vus.has(id)) { cluster.removeLayer(x); marqueurs.delete(id); }
 
-  legCats = cfg.regles.map((r, i) => ({ i, r })).filter(x => regleActive(x.r) && presents.has(x.i)).map(x => ({ k:'r' + x.i, label:nomRegle(x.r), couleur:x.r.couleur || cfg.defaut.couleur, forme:x.r.forme || cfg.defaut.forme, emoji:x.r.contenu.t === 'emoji' ? x.r.contenu.e : '' }));
-  if (legCats.length && presents.has(-1)) legCats.push({ k:'r-1', label:'Autres', couleur:cfg.defaut.couleur, forme:cfg.defaut.forme, emoji:'' });
+  legCats = cfg.regles.map((r, i) => ({ i, r })).filter(x => regleActive(x.r) && presents.has(x.i)).map(x => ({ k:'r' + x.i, label:nomRegle(x.r), couleur:x.r.couleur || cfg.defaut.couleur, forme:x.r.forme || cfg.defaut.forme, emoji:x.r.contenu.t === 'emoji' ? x.r.contenu.e : '', bordc:x.r.bordc || cfg.defaut.bordc, borde:x.r.bordc ? x.r.borde : cfg.defaut.borde }));
+  if (legCats.length && presents.has(-1)) legCats.push({ k:'r-1', label:'Autres', couleur:cfg.defaut.couleur, forme:cfg.defaut.forme, emoji:'', bordc:cfg.defaut.bordc, borde:cfg.defaut.borde });
   majLegende();
 
   const valsDe = c => [...new Set([...marqueurs.values()].map(x => x._cifi.fv[c]))].filter(v => v !== undefined).sort((a, b) => String(a).localeCompare(String(b), 'fr')).slice(0, 200);
@@ -767,7 +769,7 @@ function blocListe(g) {
 }
 function carteRegle(r, i) {
   const R = `data-r="${i}"`;
-  return `<details class="regle" ${R}${r.o ? ' open' : ''}><summary>${swatch(r.forme || cfg.defaut.forme, r.couleur || cfg.defaut.couleur, r.contenu.t === 'emoji' ? r.contenu.e : '')}<span class="rg-nom">${esc(nomRegle(r))}</span><span class="rg-btns">${btn('rup', R, '▲', 'Monter')}${btn('rdown', R, '▼', 'Descendre')}${btn('rdel', R, '✕', 'Supprimer la règle')}</span></summary>
+  return `<details class="regle" ${R}${r.o ? ' open' : ''}><summary>${swatch(r.forme || cfg.defaut.forme, r.couleur || cfg.defaut.couleur, r.contenu.t === 'emoji' ? r.contenu.e : '', r.bordc || cfg.defaut.bordc, r.bordc ? r.borde : cfg.defaut.borde)}<span class="rg-nom">${esc(nomRegle(r))}</span><span class="rg-btns">${btn('rup', R, '▲', 'Monter')}${btn('rdown', R, '▼', 'Descendre')}${btn('rdel', R, '✕', 'Supprimer la règle')}</span></summary>
     <div class="rg-corps-r"><div class="rg-sous">Nom dans la légende</div><div class="rg-l2"><input type="text" value="${esc(r.nom)}" placeholder="facultatif" data-a="rnom" ${R} aria-label="Nom dans la légende"></div>
     <div class="rg-sous">Si</div>
     ${r.si.map((k, j) => { const K = `${R} data-k="${j}"`; return `<div class="rg-l2">${selCol(`data-a="cc" ${K}`, k.c)}<select data-a="co" ${K} aria-label="Condition">${OPS.map(([v, t]) => `<option value="${v}"${v === k.op ? ' selected' : ''}>${t}</option>`).join('')}</select>${k.op === 'vide' || k.op === 'rempli' ? '' : `<input type="text" data-a="cv" ${K} value="${esc(k.v)}" placeholder="valeur" aria-label="Valeur">`}${btn('cdel', K, '✕', 'Retirer la condition')}</div>`; }).join('')}
@@ -775,6 +777,7 @@ function carteRegle(r, i) {
     <div class="rg-sous">Alors</div>
     <div class="rg-l2"><label><input type="checkbox" data-a="rc-on" ${R}${r.couleur ? ' checked' : ''}> Couleur</label><input type="color" data-a="rc" ${R} value="${r.couleur || '#c1121f'}"${r.couleur ? '' : ' disabled'} aria-label="Couleur">
       <label><input type="checkbox" data-a="rf-on" ${R}${r.forme ? ' checked' : ''}> Forme</label>${selForme(`data-a="rf" ${R}`, r.forme || 'rond', !r.forme)}</div>
+    <div class="rg-l2"><label><input type="checkbox" data-a="rd-on" ${R}${r.bordc ? ' checked' : ''}> Bordure</label><input type="color" data-a="rdc" ${R} value="${r.bordc || '#1d2733'}"${r.bordc ? '' : ' disabled'} aria-label="Couleur de la bordure"><input type="number" min="0" max="8" data-a="rde" ${R} value="${r.borde}"${r.bordc ? '' : ' disabled'} style="width:56px" aria-label="Épaisseur de la bordure"> px</div>
     <div class="rg-l2"><label>Sur le point :</label><select data-a="rct" ${R} aria-label="Contenu du point"><option value=""${!r.contenu.t ? ' selected' : ''}>Rien</option><option value="emoji"${r.contenu.t === 'emoji' ? ' selected' : ''}>Un emoji ou un texte</option><option value="valeur"${r.contenu.t === 'valeur' ? ' selected' : ''}>La valeur d’une colonne</option></select>
       ${r.contenu.t === 'emoji' ? `<input type="text" data-a="re" ${R} value="${esc(r.contenu.e)}" placeholder="ex. ✅" style="max-width:90px" aria-label="Emoji">` : r.contenu.t === 'valeur' ? selCol(`data-a="rcc" ${R}`, r.contenu.c)     : ''}</div>
     <div class="rg-l2"><label>Bulle :</label><select data-a="rbt" ${R} aria-label="Bulle"><option value=""${!r.bulle.t ? ' selected' : ''}>Aucune</option><option value="coin"${r.bulle.t === 'coin' ? ' selected' : ''}>Pastille dans le coin du point</option><option value="texte"${r.bulle.t === 'texte' ? ' selected' : ''}>Bulle de texte à côté du point</option><option value="signal"${r.bulle.t === 'signal' ? ' selected' : ''}>Signal pulsé seul</option></select>
@@ -793,7 +796,7 @@ function blocEntete(k) {
     <label>Taille du titre (0 = automatique) <input type="number" min="0" max="30" ${D} data-f="taille" value="${h.taille}"> px</label></section>`;
 }
 function contenuOnglet() {
-  if (onglet === 'points') return `<section><h3>Style par défaut des points</h3><div class="rg-l2"><label>Couleur <input type="color" data-a="defc" value="${cfg.defaut.couleur}"></label><label>Forme ${selForme('data-a="deff"', cfg.defaut.forme)}</label></div></section>
+  if (onglet === 'points') return `<section><h3>Style par défaut des points</h3><div class="rg-l2"><label>Couleur <input type="color" data-a="defc" value="${cfg.defaut.couleur}"></label><label>Forme ${selForme('data-a="deff"', cfg.defaut.forme)}</label><label>Bordure <input type="color" data-a="defbc" value="${cfg.defaut.bordc}" aria-label="Couleur de la bordure"> <input type="number" min="0" max="8" data-a="defbe" value="${cfg.defaut.borde}" style="width:56px" aria-label="Épaisseur de la bordure"> px</label></div></section>
     <p class="vide" style="font-size:12px">Chaque règle s’applique aux points qui remplissent toutes ses conditions. Pour la couleur, la forme et le contenu, la première règle qui en définit une l’emporte.</p>
     ${cfg.regles.map(carteRegle).join('')}<button type="button" class="rg-ajout" data-a="radd">+ Ajouter une règle</button>`;
   if (onglet === 'popup') return blocEntete('popup') + `<section><h3>Colonnes du popup (clic sur un point)</h3>${blocListe('p')}</section>`;
@@ -882,6 +885,11 @@ modal.addEventListener('change', e => {
     case 'rbe': R.bulle.e = t.value; break;
     case 'rbk': R.bulle.couleur = t.value; break;
     case 'rbp': R.bulle.pulse = t.checked; break;
+    case 'defbc': cfg.defaut.bordc = t.value; break;
+    case 'defbe': cfg.defaut.borde = Math.max(0, Math.min(8, t.value === '' ? 3 : +t.value || 0)); break;
+    case 'rd-on': R.bordc = t.checked ? '#1d2733' : ''; if (t.checked && !R.borde) R.borde = 3; break;
+    case 'rdc': R.bordc = t.value; break;
+    case 'rde': R.borde = Math.max(0, Math.min(8, t.value === '' ? 3 : +t.value || 0)); break;
     case 'eh': { const H = cfg.entetes[t.dataset.h]; H[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (+t.value || 0) : t.value; break; }
     case 'eh-txt-on': cfg.entetes[t.dataset.h].txtc = t.checked ? '#1d2733' : ''; break;
     case 'nom': cfg.sections[+g].nom = t.value; break;
@@ -900,7 +908,7 @@ modal.addEventListener('change', e => {
     case 'cv': R.si[k].v = t.value; break;
     default: return;
   }
-  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'eh-txt-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond'));
+  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond'));
 });
 modal.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.regle') && cfg.regles[+d.dataset.r]) cfg.regles[+d.dataset.r].o = d.open; }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('ouvert'); });
