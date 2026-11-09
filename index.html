@@ -232,6 +232,9 @@
   #aide { position:fixed; display:none; z-index:2000; max-width:260px; padding:6px 9px; border-radius:6px; font-size:var(--aide-fs, 12px); line-height:1.35; background:var(--aide-fond, #1d2733); color:var(--aide-coul, #fff); box-shadow:0 2px 8px #0004; pointer-events:none; }
   #message { position:absolute; left:50%; transform:translateX(-50%); z-index:1300; display:none; align-items:center; gap:10px; max-width:min(560px, 92vw); padding:10px 14px; border-radius:10px; box-shadow:0 3px 12px #0005; font-size:14px; line-height:1.35; }
   #message.ouvert { display:flex; } #message.haut { top:64px; } #message.bas { bottom:46px; } #message .x { margin-left:auto; flex:none; width:26px; height:26px; border:0; border-radius:50%; background:#0003; color:inherit; cursor:pointer; font-size:13px; }
+  .mini-wrap { overflow-x:auto; padding:0 10px 10px; } table.mini { border-collapse:collapse; width:100%; font-size:var(--fs-fiche, 14px); }
+  .mini th { background:#f1f4f8; text-align:left; padding:6px 8px; font-weight:600; border-bottom:1px solid var(--line); white-space:nowrap; } .mini td { padding:6px 8px; border-bottom:1px solid #eef1f5; vertical-align:top; } .mini tr:last-child td { border-bottom:0; }
+  .tb-ligne { border:1px solid var(--line); border-radius:8px; padding:6px 8px; margin:6px 0; } .tb-cell { display:flex; flex-direction:column; gap:2px; min-width:120px; } .tb-cell small { color:var(--muted); font-size:11px; }
 </style>
 </head>
 <body>
@@ -240,7 +243,7 @@
 <aside id="fiche-panel" aria-label="Fiche de l’établissement" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '30';
+const VERSION = '31';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -304,6 +307,8 @@ const nEtq = e => { e = e || {}; return { forme:['point', 'rond', 'goutte', 'car
   contenu:['point', 'rien', 'texte', 'colonne'].includes(e.contenu) ? e.contenu : 'point', texte:String(e.texte || ''), col:String(e.col || ''), taille:Math.max(12, Math.min(44, +e.taille || 22)), bord:e.bord === 'perso' ? 'perso' : 'point', bordc:hex(e.bordc) || '#ffffff', borde:Math.max(0, Math.min(8, e.borde === undefined ? 2 : (+e.borde || 0))) }; };
 const egalTxt = (a, b) => sansAccent(a ?? '').trim() === sansAccent(b ?? '').trim();
 const STYLES_TXT = { titre:['Titre « Filtres »', '#filtres-titre'], filtre:['Noms des filtres', '#filtres details.flt-d > summary, #filtres label.flt'], valeurs:['Valeurs dans les filtres', '#filtres .liste label'], compteurs:['Compteurs', '#compteurs'], count:['Nombre d’établissements affichés', '#count'], version:['Numéro de version', '#count .ver'], boutons:['Boutons du panneau', '.panel.gauche button.link'], liste:['Noms dans la liste des établissements', '#liste button'], legende:['Légende', '#legende, #legende button'] };
+const nTab = t => { t = t || {}; const heads = (t.heads || []).map(String); return { heads, vides:t.vides !== false, rows:(t.rows || []).map(r => ({ cells:heads.map((h, j) => { const x = ((r && r.cells) || [])[j] || {}; return { c:String(x.c || ''), v:String(x.v || '') }; }) })) }; };
+const nSec = s => ({ nom:(s && s.nom) || '', cols:((s && s.cols) || []).map(nEntree), type:(s && s.type === 'tableau') ? 'tableau' : 'liste', tab:nTab(s && s.tab) });
 const nMsg = m => { m = m || {}; const d = x => /^\d{4}-\d{2}-\d{2}$/.test(x || '') ? x : ''; return { actif:m.actif !== false, texte:String(m.texte || ''), ico:String(m.ico || ''), style:['info', 'attention', 'urgent', 'perso'].includes(m.style) ? m.style : 'info', fond:hex(m.fond) || '#1f4e8c', coul:hex(m.coul) || '#ffffff', pos:m.pos === 'bas' ? 'bas' : 'haut', duree:Math.max(0, Math.min(600, +m.duree || 0)), rep:['ouverture', 'session', 'intervalle'].includes(m.rep) ? m.rep : 'ouverture', min:Math.max(1, Math.min(240, +m.min || 10)), debut:d(m.debut), fin:d(m.fin) }; };
 const nRech = r => { r = r || {}; return { info:String(r.info || ''), nom:r.nom !== false, mode:r.mode === 'choix' ? 'choix' : 'toutes', cols:(r.cols || []).map(x => ({ c:String((x && x.c) || ''), nom:String((x && x.nom) || '') })) }; };
 const nSt = x => { x = x || {}; return { coul:hex(x.coul), fond:hex(x.fond), taille:Math.max(0, Math.min(40, +x.taille || 0)), gras:!!x.gras, ital:!!x.ital }; };
@@ -311,7 +316,7 @@ const ICO_DEF = { iti:'🧭', prog:'📊' };
 const nFiltre = f => { f = f || {}; return { fond:hex(f.fond), coul:hex(f.coul), gras:!!f.gras, c:String(f.c || ''), nom:String(f.nom || ''), type:['multi', 'unique', 'oui', 'curseur'].includes(f.type) ? f.type : 'multi', oui:String(f.oui || 'Oui'), non:String(f.non || 'Non') }; };
 const nInd = i => { i = i || {}; return { nom:String(i.nom || ''), grp:String(i.grp || ''), fait:String(i.fait || ''), att:String(i.att || ''), orange:Math.max(0, Math.min(200, +i.orange || 50)), vert:Math.max(0, Math.min(200, +i.vert || 80)) }; };
 const nProg = p => { p = p || {}; return { inds:(p.inds || []).map(nInd), tri:['nom', 'asc', 'desc'].includes(p.tri) ? p.tri : 'nom', suivre:p.suivre !== false, clic:p.clic !== false }; };
-const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(s => ({ nom:s.nom || '', cols:(s.cols || []).map(nEntree) })), regles:(c.regles || []).map(nRegle), defaut:nDef(c.defaut), entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, ordre:normOrdre(c.ordre), barre:nBarre(c.barre), messages:(c.messages || []).map(nMsg), recherche:nRech(c.recherche), styles:Object.fromEntries(Object.keys(STYLES_TXT).map(k => [k, nSt((c.styles || {})[k])])), filtres:(c.filtres || []).map(nFiltre), prog:nProg(c.prog), etiquettes:{ liste:nEtq((c.etiquettes || {}).liste), legende:nEtq((c.etiquettes || {}).legende) } }; };
+const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(nSec), regles:(c.regles || []).map(nRegle), defaut:nDef(c.defaut), entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, ordre:normOrdre(c.ordre), barre:nBarre(c.barre), messages:(c.messages || []).map(nMsg), recherche:nRech(c.recherche), styles:Object.fromEntries(Object.keys(STYLES_TXT).map(k => [k, nSt((c.styles || {})[k])])), filtres:(c.filtres || []).map(nFiltre), prog:nProg(c.prog), etiquettes:{ liste:nEtq((c.etiquettes || {}).liste), legende:nEtq((c.etiquettes || {}).legende) } }; };
 let opts = {}, cfg = norm(), lastRec = null, lastMap = null, labels = {}, types = {}, allCols = [], donnees = new Map(), tid = null, erreurAcces = '', labelsCharges = false, labelsT = {}, typesT = {}, visT = {}, refTabs = {}, lieeOuverte = false;
 let recherche = '', premierChargement = true, idSelectionne = null, ficheId = null, sansGps = 0, regroupPrec = true, rechChamp = '', sugIdx = -1, sugList = [], msgTimers = [], msgFile = [], msgCourant = null, msgSig = '', msgFin = null, aideT = null, sigFiltres = '', sigFiltresDef = '', etatFiltres = new Map(), filtresSecOuvert = true, sigStyles = '', filtresDefs = [], listeOuverte = false, cptCols = [], sigAff = '', legOuverte = true, legCats = [];
 const marqueurs = new Map(), masques = new Set(), filtreSel = {}, etatSections = new Map();
@@ -633,12 +638,18 @@ function fichier(d) {
     <div class="corps">${cfg.popup.length ? lignes(champsDe(cfg.popup, d.vals)) : '<p style="padding:10px 14px;margin:0;color:var(--muted);font-size:13px">Choisissez les colonnes du popup dans « Configurer le widget ».</p>'}</div>
     <div class="pied"><button type="button" class="btn-fiche" data-id="${Number(d.id)}">Voir la fiche complète</button> <button type="button" class="btn-iti" data-id="${Number(d.id)}" style="background:#fff;color:var(--accent);border:1px solid var(--accent)">＋ Itinéraire</button></div></div>`;
 }
+function sectionDonnees(sec, vals) {   // section « liste de colonnes » ou « mini tableau »
+  if (sec.type !== 'tableau') { const l = champsDe(sec.cols, vals); return { n:l.length, html:lignes(l) }; }
+  const T = sec.tab, rows = T.rows.map(r => r.cells.map(x => x.c ? { v:fmt(x.c, vals[x.c]), col:true } : { v:x.v, col:false })).filter(r => !T.vides || !r.some(x => x.col) || r.some(x => x.col && x.v !== null && x.v !== ''));
+  if (!rows.length || !T.heads.length) return { n:0, html:'' };
+  return { n:rows.length, html:`<div class="mini-wrap"><table class="mini"><thead><tr>${T.heads.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(x => `<td>${esc(x.v ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` };
+}
 function corpsFiche(d) {
-  const secs = cfg.sections.map((sec, i) => ({ sec, i, l: champsDe(sec.cols, d.vals) })).filter(x => x.l.length);
+  const secs = cfg.sections.map((sec, i) => ({ sec, i, r:sectionDonnees(sec, d.vals) })).filter(x => x.r.n);
   if (!secs.length) return '<p class="vide">Aucune section à afficher. Créez vos sections dans « Configurer le widget », onglet Fiche.</p>';
   const o = opt('ouverture', 'Première section'), ouvert = (k, i) => etatSections.has(k) ? etatSections.get(k) : (o === 'Toutes' || (o !== 'Aucune' && i === 0));
   return (secs.length > 1 ? '<div class="fp-outils"><button type="button" class="fp-tout">Tout déplier / replier</button></div>' : '') +
-    secs.map((x, k) => `<details class="theme" data-t="s${x.i}"${ouvert('s' + x.i, k) ? ' open' : ''}><summary>${esc(x.sec.nom || 'Section')} <span class="nb">(${x.l.length})</span></summary>${lignes(x.l)}</details>`).join('');
+    secs.map((x, k) => `<details class="theme" data-t="s${x.i}"${ouvert('s' + x.i, k) ? ' open' : ''}><summary>${esc(x.sec.nom || 'Section')} <span class="nb">(${x.r.n})</span></summary>${x.r.html}</details>`).join('');
 }
 const panneau = document.getElementById('fiche-panel');
 function ouvrirFiche(id, focus = true) {
@@ -985,6 +996,18 @@ const selCol = (attrs, val) => `<select ${attrs} aria-label="Colonne"><option va
 const selForme = (attrs, val, dis) => `<select ${attrs}${dis ? ' disabled' : ''} aria-label="Forme">${FORMES.map(f => `<option value="${f}"${f === val ? ' selected' : ''}>${FORMES_LIB[f]}</option>`).join('')}</select>`;
 const btn = (a, att, t, lab) => `<button type="button" data-a="${a}" ${att}${lab ? ` aria-label="${lab}"` : ''}>${t}</button>`;
 
+function blocSection(sec, i) {
+  const T = sec.tab, G = `data-g="${i}"`;
+  const type = `<div class="rg-l2"><label>Type de section <select data-a="sec-type" ${G}><option value="liste"${sec.type === 'liste' ? ' selected' : ''}>Liste de colonnes</option><option value="tableau"${sec.type === 'tableau' ? ' selected' : ''}>Mini tableau (lignes × colonnes)</option></select></label></div>`;
+  if (sec.type !== 'tableau') return type + blocListe(String(i));
+  return type + `<div class="rg-sous">Colonnes du tableau</div>
+    <div class="rg-l2">${T.heads.map((h, j) => `<input type="text" data-a="tb-h" ${G} data-j="${j}" value="${esc(h)}" aria-label="Titre de la colonne ${j + 1}" style="max-width:130px">${btn('tb-hdel', `${G} data-j="${j}"`, '✕', 'Retirer la colonne')}`).join('')}${btn('tb-hadd', G, '+ colonne')}</div>
+    <div class="rg-sous">Lignes (une par année, par exemple)</div>
+    ${T.rows.map((r, k) => { const K = `${G} data-k="${k}"`; return `<div class="tb-ligne"><div class="rg-l1"><b>Ligne ${k + 1}</b>${btn('tb-rup', K, '▲', 'Monter')}${btn('tb-rdown', K, '▼', 'Descendre')}${btn('tb-rdup', K, 'Dupliquer')}${btn('tb-rdel', K, '✕', 'Supprimer la ligne')}</div>
+      <div class="rg-l2">${T.heads.map((h, j) => { const x = r.cells[j] || { c:'', v:'' }, at = `data-a="tb-c" ${K} data-j="${j}"`; return `<div class="tb-cell"><small>${esc(h || 'Colonne ' + (j + 1))}</small><select ${at} data-f="c" aria-label="Source de la cellule"><option value="">Texte fixe</option>${allCols.map(c => `<option value="${esc(c)}"${c === x.c ? ' selected' : ''}>${esc(libel(c))}</option>`).join('')}</select>${x.c ? '' : `<input type="text" ${at} data-f="v" value="${esc(x.v)}" placeholder="texte" aria-label="Texte">`}</div>`; }).join('')}</div></div>`; }).join('')}
+    ${btn('tb-radd', G, '+ ligne')}
+    <label><input type="checkbox" data-a="tb" ${G} data-f="vides"${T.vides ? ' checked' : ''}> Masquer les lignes dont toutes les valeurs de colonnes sont vides</label>`;
+}
 function blocListe(g) {
   const l = listeDe(g), dispo = allCols.filter(c => !l.some(x => x.c === c));
   const cb = (a, at, v, t) => `<label><input type="checkbox" data-a="${a}" ${at}${v ? ' checked' : ''}> ${t}</label>`;
@@ -1113,7 +1136,7 @@ function contenuOnglet() {
     <p class="vide" style="font-size:12px">Chaque règle s’applique aux points qui remplissent toutes ses conditions. Pour la couleur, la forme et le contenu, la première règle qui en définit une l’emporte.</p>
     ${cfg.regles.map(carteRegle).join('')}<button type="button" class="rg-ajout" data-a="radd">+ Ajouter une règle</button>`;
   if (onglet === 'popup') return blocEntete('popup') + `<section><h3>Colonnes du popup (clic sur un point)</h3>${blocListe('p')}</section>`;
-  if (onglet === 'fiche') return blocEntete('fiche') + cfg.sections.map((sec, i) => `<section><div class="rg-sec"><input type="text" value="${esc(sec.nom)}" data-a="nom" data-g="${i}" aria-label="Nom de la section" placeholder="Nom de la section">${btn('sup', `data-g="${i}"`, '▲', 'Monter')}${btn('sdown', `data-g="${i}"`, '▼', 'Descendre')}${btn('sdel', `data-g="${i}"`, 'Supprimer')}</div>${blocListe(String(i))}</section>`).join('') + '<button type="button" class="rg-ajout" data-a="sadd">+ Ajouter une section</button>';
+  if (onglet === 'fiche') return blocEntete('fiche') + cfg.sections.map((sec, i) => `<section><div class="rg-sec"><input type="text" value="${esc(sec.nom)}" data-a="nom" data-g="${i}" aria-label="Nom de la section" placeholder="Nom de la section">${btn('sup', `data-g="${i}"`, '▲', 'Monter')}${btn('sdown', `data-g="${i}"`, '▼', 'Descendre')}${btn('sdel', `data-g="${i}"`, 'Supprimer')}</div>${blocSection(sec, i)}</section>`).join('') + '<button type="button" class="rg-ajout" data-a="sadd">+ Ajouter une section</button> <button type="button" class="rg-ajout" data-a="sadd-t">+ Ajouter une section « tableau »</button>';
   if (onglet === 'barre') return blocBarre();
   if (onglet === 'filtres') return blocFiltres();
   if (onglet === 'messages') return blocMessages();
@@ -1187,7 +1210,14 @@ modal.addEventListener('click', e => {
     case 'del': listeDe(g).splice(i, 1); break;
     case 'sup': case 'sdown': deplacer(cfg.sections, +g, a === 'sup' ? -1 : 1); break;
     case 'sdel': if (!confirm('Supprimer cette section ?')) return; cfg.sections.splice(+g, 1); break;
-    case 'sadd': cfg.sections.push({ nom:'Nouvelle section', cols:[] }); break;
+    case 'sadd': cfg.sections.push(nSec({ nom:'Nouvelle section' })); break;
+    case 'sadd-t': { const rows = [2025, 2024, 2023, 2022].map(y => ({ cells:[{ c:'', v:String(y) }, { c:allCols.find(x => new RegExp('contr.les?.*' + y, 'i').test(libel(x))) || '', v:'' }, { c:'', v:'' }] })); cfg.sections.push(nSec({ nom:'Historique des contrôles', type:'tableau', tab:{ heads:['Année', 'Contrôles', 'Remarques'], vides:true, rows } })); break; }
+    case 'tb-hadd': { const T = cfg.sections[+g].tab; T.heads.push('Colonne ' + (T.heads.length + 1)); T.rows.forEach(r => r.cells.push({ c:'', v:'' })); break; }
+    case 'tb-hdel': { const T = cfg.sections[+g].tab, j = +b.dataset.j; T.heads.splice(j, 1); T.rows.forEach(r => r.cells.splice(j, 1)); break; }
+    case 'tb-radd': { const T = cfg.sections[+g].tab; T.rows.push({ cells:T.heads.map(() => ({ c:'', v:'' })) }); break; }
+    case 'tb-rdel': cfg.sections[+g].tab.rows.splice(k, 1); break;
+    case 'tb-rup': case 'tb-rdown': deplacer(cfg.sections[+g].tab.rows, k, a === 'tb-rup' ? -1 : 1); break;
+    case 'tb-rdup': { const R = cfg.sections[+g].tab.rows; R.splice(k + 1, 0, JSON.parse(JSON.stringify(R[k]))); break; }
     case 'radd': cfg.regles.push(nRegle({ o:true, si:[{ c:'', op:'=', v:'' }], couleur:'#c1121f' })); break;
     case 'rup': case 'rdown': deplacer(cfg.regles, r, a === 'rup' ? -1 : 1); break;
     case 'rdel': cfg.regles.splice(r, 1); break;
@@ -1242,6 +1272,10 @@ modal.addEventListener('change', e => {
     case 'eh': { const H = cfg.entetes[t.dataset.h]; H[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (+t.value || 0) : t.value; break; }
     case 'eh-txt-on': cfg.entetes[t.dataset.h].txtc = t.checked ? '#1d2733' : ''; break;
     case 'ms': { const M = cfg.messages[+t.dataset.i], f = t.dataset.f; if (M) M[f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(+t.min, Math.min(+t.max, +t.value || 0)) : t.value; break; }
+    case 'sec-type': cfg.sections[+t.dataset.g].type = t.value; break;
+    case 'tb-h': cfg.sections[+t.dataset.g].tab.heads[+t.dataset.j] = t.value; break;
+    case 'tb-c': { const C = cfg.sections[+t.dataset.g].tab.rows[+t.dataset.k].cells[+t.dataset.j]; C[t.dataset.f] = t.value; break; }
+    case 'tb': cfg.sections[+t.dataset.g].tab[t.dataset.f] = t.checked; break;
     case 'rch': cfg.recherche[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; break;
     case 'rc': { const X = cfg.recherche.cols[+t.dataset.i]; if (X) X[t.dataset.f] = t.value; break; }
     case 'fl': { const F = cfg.filtres[+t.dataset.i], f = t.dataset.f; if (F) { if (f === 'fond-on') F.fond = t.checked ? '#fff3bf' : ''; else if (f === 'coul-on') F.coul = t.checked ? '#1d2733' : ''; else if (t.type === 'checkbox') F[f] = t.checked; else F[f] = t.value; } break; }
@@ -1267,7 +1301,7 @@ modal.addEventListener('change', e => {
     case 'cv': R.si[k].v = t.value; break;
     default: return;
   }
-  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond') || (a === 'et' && ['couleur', 'contenu', 'bord'].includes(t.dataset.f)) || (a === 'fl' && ['type', 'fond-on', 'coul-on'].includes(t.dataset.f)) || (a === 'st' && /-on$/.test(t.dataset.f)) || (a === 'ms' && ['style', 'rep'].includes(t.dataset.f)));
+  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond') || (a === 'et' && ['couleur', 'contenu', 'bord'].includes(t.dataset.f)) || (a === 'fl' && ['type', 'fond-on', 'coul-on'].includes(t.dataset.f)) || (a === 'st' && /-on$/.test(t.dataset.f)) || (a === 'ms' && ['style', 'rep'].includes(t.dataset.f)) || a === 'sec-type' || a === 'tb-h' || (a === 'tb-c' && t.dataset.f === 'c'));
 });
 modal.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.regle') && cfg.regles[+d.dataset.r]) cfg.regles[+d.dataset.r].o = d.open; }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerReglages(); });
