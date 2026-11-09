@@ -222,6 +222,16 @@
   .cur { display:block; margin-top:4px; } .cur input { width:100%; } .cur-l { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); } .cur-l .on { color:var(--accent); font-weight:700; }
   #liste, #filtres .liste { max-height:var(--liste-max, none); overflow-y:auto; }
   #filtres details#filtres-sec { border:0; margin-top:6px; } #filtres-titre { font-weight:700; padding:4px 0; cursor:pointer; } .filtres-in { margin-top:2px; }
+  .leaflet-top.leaflet-left { bottom:0; padding-bottom:36px; box-sizing:border-box; }
+  .leaflet-top.leaflet-left .panel.gauche { max-height:none; flex:0 1 auto; min-height:0; overflow-x:hidden; }
+  #liste, #liste button { overflow-x:hidden; } #liste button { white-space:normal; text-align:left; }
+  .b-q { display:flex; gap:6px; } .b-q input[type=search] { flex:1; min-width:0; } .b-q select { max-width:46%; font:inherit; font-size:12px; border:1px solid var(--line); border-radius:6px; }
+  .b-q { flex-wrap:wrap; } .sug { flex-basis:100%; border:1px solid var(--line); border-radius:6px; background:#fff; margin-top:2px; overflow:hidden; }
+  .sug button { display:flex; flex-direction:column; align-items:flex-start; width:100%; padding:6px 9px; font:inherit; font-size:13px; text-align:left; background:none; border:0; border-bottom:1px solid #eef1f5; cursor:pointer; color:var(--ink); }
+  .sug button:hover, .sug button.on { background:#e8eef7; } .sug small { color:var(--muted); font-size:11px; } .sug .sug-tous { color:var(--accent); text-decoration:underline; }
+  #aide { position:fixed; display:none; z-index:2000; max-width:260px; padding:6px 9px; border-radius:6px; font-size:var(--aide-fs, 12px); line-height:1.35; background:var(--aide-fond, #1d2733); color:var(--aide-coul, #fff); box-shadow:0 2px 8px #0004; pointer-events:none; }
+  #message { position:absolute; left:50%; transform:translateX(-50%); z-index:1300; display:none; align-items:center; gap:10px; max-width:min(560px, 92vw); padding:10px 14px; border-radius:10px; box-shadow:0 3px 12px #0005; font-size:14px; line-height:1.35; }
+  #message.ouvert { display:flex; } #message.haut { top:64px; } #message.bas { bottom:46px; } #message .x { margin-left:auto; flex:none; width:26px; height:26px; border:0; border-radius:50%; background:#0003; color:inherit; cursor:pointer; font-size:13px; }
 </style>
 </head>
 <body>
@@ -230,7 +240,7 @@
 <aside id="fiche-panel" aria-label="Fiche de l’établissement" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '28';
+const VERSION = '30';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -294,14 +304,16 @@ const nEtq = e => { e = e || {}; return { forme:['point', 'rond', 'goutte', 'car
   contenu:['point', 'rien', 'texte', 'colonne'].includes(e.contenu) ? e.contenu : 'point', texte:String(e.texte || ''), col:String(e.col || ''), taille:Math.max(12, Math.min(44, +e.taille || 22)), bord:e.bord === 'perso' ? 'perso' : 'point', bordc:hex(e.bordc) || '#ffffff', borde:Math.max(0, Math.min(8, e.borde === undefined ? 2 : (+e.borde || 0))) }; };
 const egalTxt = (a, b) => sansAccent(a ?? '').trim() === sansAccent(b ?? '').trim();
 const STYLES_TXT = { titre:['Titre « Filtres »', '#filtres-titre'], filtre:['Noms des filtres', '#filtres details.flt-d > summary, #filtres label.flt'], valeurs:['Valeurs dans les filtres', '#filtres .liste label'], compteurs:['Compteurs', '#compteurs'], count:['Nombre d’établissements affichés', '#count'], version:['Numéro de version', '#count .ver'], boutons:['Boutons du panneau', '.panel.gauche button.link'], liste:['Noms dans la liste des établissements', '#liste button'], legende:['Légende', '#legende, #legende button'] };
+const nMsg = m => { m = m || {}; const d = x => /^\d{4}-\d{2}-\d{2}$/.test(x || '') ? x : ''; return { actif:m.actif !== false, texte:String(m.texte || ''), ico:String(m.ico || ''), style:['info', 'attention', 'urgent', 'perso'].includes(m.style) ? m.style : 'info', fond:hex(m.fond) || '#1f4e8c', coul:hex(m.coul) || '#ffffff', pos:m.pos === 'bas' ? 'bas' : 'haut', duree:Math.max(0, Math.min(600, +m.duree || 0)), rep:['ouverture', 'session', 'intervalle'].includes(m.rep) ? m.rep : 'ouverture', min:Math.max(1, Math.min(240, +m.min || 10)), debut:d(m.debut), fin:d(m.fin) }; };
+const nRech = r => { r = r || {}; return { info:String(r.info || ''), nom:r.nom !== false, mode:r.mode === 'choix' ? 'choix' : 'toutes', cols:(r.cols || []).map(x => ({ c:String((x && x.c) || ''), nom:String((x && x.nom) || '') })) }; };
 const nSt = x => { x = x || {}; return { coul:hex(x.coul), fond:hex(x.fond), taille:Math.max(0, Math.min(40, +x.taille || 0)), gras:!!x.gras, ital:!!x.ital }; };
 const ICO_DEF = { iti:'🧭', prog:'📊' };
 const nFiltre = f => { f = f || {}; return { fond:hex(f.fond), coul:hex(f.coul), gras:!!f.gras, c:String(f.c || ''), nom:String(f.nom || ''), type:['multi', 'unique', 'oui', 'curseur'].includes(f.type) ? f.type : 'multi', oui:String(f.oui || 'Oui'), non:String(f.non || 'Non') }; };
 const nInd = i => { i = i || {}; return { nom:String(i.nom || ''), grp:String(i.grp || ''), fait:String(i.fait || ''), att:String(i.att || ''), orange:Math.max(0, Math.min(200, +i.orange || 50)), vert:Math.max(0, Math.min(200, +i.vert || 80)) }; };
 const nProg = p => { p = p || {}; return { inds:(p.inds || []).map(nInd), tri:['nom', 'asc', 'desc'].includes(p.tri) ? p.tri : 'nom', suivre:p.suivre !== false, clic:p.clic !== false }; };
-const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(s => ({ nom:s.nom || '', cols:(s.cols || []).map(nEntree) })), regles:(c.regles || []).map(nRegle), defaut:nDef(c.defaut), entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, ordre:normOrdre(c.ordre), barre:nBarre(c.barre), styles:Object.fromEntries(Object.keys(STYLES_TXT).map(k => [k, nSt((c.styles || {})[k])])), filtres:(c.filtres || []).map(nFiltre), prog:nProg(c.prog), etiquettes:{ liste:nEtq((c.etiquettes || {}).liste), legende:nEtq((c.etiquettes || {}).legende) } }; };
+const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(s => ({ nom:s.nom || '', cols:(s.cols || []).map(nEntree) })), regles:(c.regles || []).map(nRegle), defaut:nDef(c.defaut), entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, ordre:normOrdre(c.ordre), barre:nBarre(c.barre), messages:(c.messages || []).map(nMsg), recherche:nRech(c.recherche), styles:Object.fromEntries(Object.keys(STYLES_TXT).map(k => [k, nSt((c.styles || {})[k])])), filtres:(c.filtres || []).map(nFiltre), prog:nProg(c.prog), etiquettes:{ liste:nEtq((c.etiquettes || {}).liste), legende:nEtq((c.etiquettes || {}).legende) } }; };
 let opts = {}, cfg = norm(), lastRec = null, lastMap = null, labels = {}, types = {}, allCols = [], donnees = new Map(), tid = null, erreurAcces = '', labelsCharges = false, labelsT = {}, typesT = {}, visT = {}, refTabs = {}, lieeOuverte = false;
-let recherche = '', premierChargement = true, idSelectionne = null, ficheId = null, sansGps = 0, regroupPrec = true, sigFiltres = '', sigFiltresDef = '', etatFiltres = new Map(), filtresSecOuvert = true, sigStyles = '', filtresDefs = [], listeOuverte = false, cptCols = [], sigAff = '', legOuverte = true, legCats = [];
+let recherche = '', premierChargement = true, idSelectionne = null, ficheId = null, sansGps = 0, regroupPrec = true, rechChamp = '', sugIdx = -1, sugList = [], msgTimers = [], msgFile = [], msgCourant = null, msgSig = '', msgFin = null, aideT = null, sigFiltres = '', sigFiltresDef = '', etatFiltres = new Map(), filtresSecOuvert = true, sigStyles = '', filtresDefs = [], listeOuverte = false, cptCols = [], sigAff = '', legOuverte = true, legCats = [];
 const marqueurs = new Map(), masques = new Set(), filtreSel = {}, etatSections = new Map();
 const opt = (n, d) => (opts[n] === undefined || opts[n] === null || opts[n] === '') ? d : opts[n];
 const libel = c => labels[c] || joli(c);
@@ -367,7 +379,7 @@ function dessinerBarre() {
   const st = barre.style, rayon = { carre:'3px', arrondi:'10px', rond:'50%' }[b.forme];
   st.setProperty('--bb-t', b.taille + 'px'); st.setProperty('--bb-fond', b.fond); st.setProperty('--bb-coul', b.coul); st.setProperty('--bb-bc', b.bordc); st.setProperty('--bb-bw', b.borde + 'px'); st.setProperty('--bb-r', rayon); st.setProperty('--bb-sh', b.ombre ? '0 1px 4px #0004' : 'none');
   const pop = barre.querySelector('#pop-legende'), leg = document.getElementById('legende'), pan = document.querySelector('.panel.gauche');
-  barre.querySelector('#barre-btns').innerHTML = b.boutons.filter(x => x.on).map(x => `<button type="button" class="bb" data-b="${x.id}" title="${esc(x.ti)}" aria-label="${esc(x.ti)}"${x.id === 'legende' ? ` aria-pressed="${pop.classList.contains('ouvert')}"` : ''}>${x.txt ? esc(x.txt) : ICONES_BARRE[x.id]}</button>`).join('');
+  barre.querySelector('#barre-btns').innerHTML = b.boutons.filter(x => x.on).map(x => `<button type="button" class="bb" data-b="${x.id}" data-aide="${esc(x.ti)}" aria-label="${esc(x.ti)}"${x.id === 'legende' ? ` aria-pressed="${pop.classList.contains('ouvert')}"` : ''}>${x.txt ? esc(x.txt) : ICONES_BARRE[x.id]}</button>`).join('');
   if (leg && pop && pan) { if (barreOn('legende')) { if (leg.parentNode !== pop) pop.appendChild(leg); } else { if (leg.parentNode !== pan) pan.appendChild(leg); pop.classList.remove('ouvert'); } }
   const hc = document.getElementById('hote-hc'), bc = document.getElementById('hote-bc');   // la recherche de commune se décale si la barre occupe le même emplacement
   if (hc) hc.style.top = (b.pos === 'Haut au centre' ? b.taille + 20 : 10) + 'px'; if (bc) bc.style.bottom = (b.pos === 'Bas au centre' ? b.taille + 40 : 30) + 'px';
@@ -446,12 +458,22 @@ function montrer(m, cb) { if (cluster.zoomToShowLayer) montrer(m, cb); else { ma
 const haut = L.control({ position:'topleft' });
 haut.onAdd = () => {
   const d = L.DomUtil.create('div', 'panel gauche');
-  d.innerHTML = `<button class="link" id="reduire" type="button" aria-expanded="true" style="order:-1">▴ Réduire le panneau</button><div id="commune-zone"></div><input type="search" id="q" placeholder="Rechercher un nom…" aria-label="Rechercher un établissement">
+  d.innerHTML = `<button class="link" id="reduire" type="button" aria-expanded="true" style="order:-1">▴ Réduire le panneau</button><div id="commune-zone"></div><div id="b-q" class="b-q"><input type="search" id="q" placeholder="Rechercher un nom…" aria-label="Rechercher un établissement"><select id="q-champ" aria-label="Rechercher dans" style="display:none"></select><div id="q-sug" class="sug" role="listbox" style="display:none"></div></div>
     <div id="filtres"></div><div id="compteurs"></div><div class="count" id="count"></div>
     <div id="b-liste"><button class="link" id="liste-btn" type="button" aria-expanded="false">Afficher la liste des établissements</button><div id="liste" style="display:none"></div></div>
     <button class="link" id="tout" type="button">Voir tous les points</button><button class="link" id="iti-btn" type="button">🧭 Préparer un itinéraire</button><button class="link" id="prog-btn" type="button">📊 Voir la progression</button><div class="legend" id="legende"></div><div id="cfg-secours"></div>`;
   L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
-  d.querySelector('#q').addEventListener('input', e => { recherche = sansAccent(e.target.value.trim()); appliquerFiltres(); });
+  d.querySelector('#q').addEventListener('input', e => { recherche = sansAccent(e.target.value.trim()); sugIdx = -1; appliquerFiltres(); majSug(); });
+  d.querySelector('#q').addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (!sugList.length) return; e.preventDefault(); sugIdx = Math.max(0, Math.min(sugList.length - 1, sugIdx + (e.key === 'ArrowDown' ? 1 : -1))); majSug(); }
+    else if (e.key === 'Enter') { if (sugIdx >= 0 && sugList[sugIdx] !== undefined) { e.preventDefault(); const id = sugList[sugIdx]; cacherSug(); allerA(id); } else cacherSug(); }
+    else if (e.key === 'Escape') cacherSug();
+  });
+  d.querySelector('#q-sug').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.classList.contains('sug-tous')) { cacherSug(); recentrer(); } else if (b.dataset.id) { cacherSug(); allerA(Number(b.dataset.id)); }
+  });
+  d.querySelector('#q-champ').addEventListener('change', e => { rechChamp = e.target.value; appliquerFiltres(); });
   d.querySelector('#tout').addEventListener('click', recentrer);
   d.querySelector('#reduire').addEventListener('click', e => { const r = d.classList.toggle('reduit'); e.target.setAttribute('aria-expanded', String(!r)); e.target.textContent = r ? '▾ Déplier le panneau' : '▴ Réduire le panneau'; });
   d.querySelector('#iti-btn').addEventListener('click', () => ouvrirIti());
@@ -496,6 +518,24 @@ function setListe(ouvert) {
   { const ic = ouvert ? opt('ico_liste2', '') : opt('ico_liste', ''); b.textContent = (ic ? ic + ' ' : '') + (ouvert ? opt('lib_liste2', 'Masquer la liste des établissements') : opt('lib_liste', LIB.liste[1])); }
   l.style.display = ouvert ? 'block' : 'none'; majListe();
 }
+function rechIndex(vals, nom) { const o = { __nom:sansAccent(nom ?? '') }; cfg.recherche.cols.forEach(x => { if (x.c) o['c:' + x.c] = sansAccent(fmt(x.c, vals[x.c]) ?? ''); }); return o; }
+function correspondRech(d) {   // plusieurs mots : tous doivent être trouvés, dans le champ choisi ou dans l'ensemble des champs de recherche
+  if (!recherche) return true; const R = cfg.recherche, rk = d.rk || {}, cols = R.cols.filter(x => x.c);
+  let hay = rechChamp ? (rk[rechChamp] || '') : ((R.nom || !cols.length ? (rk.__nom || '') : '') + ' ' + cols.map(x => rk['c:' + x.c] || '').join(' '));
+  return recherche.split(/\s+/).filter(Boolean).every(t => hay.includes(t));
+}
+function majRechChamp() {
+  const sel = document.getElementById('q-champ'), q = document.getElementById('q'), R = cfg.recherche, cols = R.cols.filter(x => x.c); if (!sel) return;
+  const liste = [['', 'Tous les champs']].concat(R.nom ? [['__nom', 'Nom']] : []).concat(cols.map(x => ['c:' + x.c, x.nom || libel(x.c)])), sig = JSON.stringify(liste);
+  if (sel._sig !== sig) { sel._sig = sig; sel.innerHTML = liste.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join(''); if (!liste.some(o => o[0] === rechChamp)) rechChamp = ''; sel.value = rechChamp; }
+  if (R.mode !== 'choix') rechChamp = '';
+  sel.style.display = R.mode === 'choix' && liste.length > 2 ? '' : 'none';
+  if (q) q.placeholder = opt('lib_q', cols.length ? 'Rechercher : ' + (R.nom ? ['nom'] : []).concat(cols.map(x => x.nom || libel(x.c))).join(', ') + '…' : LIB.q[1]);
+}
+function appliquerAides() {   // textes d'aide au survol des éléments du panneau, et style de la bulle
+  [['q', '#q'], ['liste', '#liste-btn'], ['tout', '#tout'], ['iti', '#iti-btn'], ['prog', '#prog-btn'], ['legende', '#legende']].forEach(([k, sel]) => { const e = document.querySelector(sel); if (e) { const t = opt('aide_' + k, ''); if (t) e.setAttribute('data-aide', t); else e.removeAttribute('data-aide'); } });
+  const r = document.documentElement; if (r && r.style) { r.style.setProperty('--aide-fond', hex(opt('aide_fond', '')) || '#1d2733'); r.style.setProperty('--aide-coul', hex(opt('aide_coul', '')) || '#ffffff'); r.style.setProperty('--aide-fs', (+opt('aide_taille', 12) || 12) + 'px'); }
+}
 function appliquerStyles() {   // couleur, fond (en pastille), taille, gras, italique de chaque texte du panneau
   const sig = JSON.stringify(cfg.styles); if (sig === sigStyles) return; sigStyles = sig;
   let el = document.getElementById('styles-dyn'); if (!el) { el = document.createElement('style'); el.id = 'styles-dyn'; (document.head || document.body).appendChild(el); }
@@ -510,12 +550,12 @@ function appliquerStyles() {   // couleur, fond (en pastille), taille, gras, ita
 const avecIco = (k, txt) => { const i = opt('ico_' + k, ICO_DEF[k] || ''); return (i ? i + ' ' : '') + txt; };
 function appliquerAffichage() {   // éléments du panneau de gauche affichés ou masqués, selon la configuration générale
   const A = k => opt('aff_' + k, true) !== false, show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
-  const ids = { commune:'commune-zone', q:'q', filtres:'filtres', compteurs:'compteurs', count:'count', liste:'b-liste', tout:'tout', iti:'iti-btn', prog:'prog-btn', legende:'legende' };
+  const ids = { commune:'commune-zone', q:'b-q', filtres:'filtres', compteurs:'compteurs', count:'count', liste:'b-liste', tout:'tout', iti:'iti-btn', prog:'prog-btn', legende:'legende' };
   cfg.ordre.forEach((k, i) => { const e = document.getElementById(ids[k]); if (e) e.style.order = i; });
   const qq = document.getElementById('q'); if (qq) qq.placeholder = opt('lib_q', LIB.q[1]);
   const tt = document.getElementById('tout'); if (tt) tt.textContent = avecIco('tout', opt('lib_tout', LIB.tout[1]));
   const ib = document.getElementById('iti-btn'); if (ib) ib.textContent = avecIco('iti', opt('lib_iti', LIB.iti[1]));
-  appliquerStyles(); show('q', A('q')); show('filtres', A('filtres')); show('compteurs', A('compteurs')); show('tout', A('tout') && !barreOn('tout')); show('legende', barreOn('legende') ? true : A('legende')); show('commune-ctl', A('commune')); show('iti-btn', A('iti') && !barreOn('iti')); show('prog-btn', A('prog') && !barreOn('prog') && cfg.prog.inds.length > 0); { const pb = document.getElementById('prog-btn'); if (pb) pb.textContent = avecIco('prog', opt('lib_prog', LIB.prog[1])); } placerCommune(); dessinerBarre();
+  appliquerStyles(); appliquerAides(); planifierMessages(); show('b-q', A('q')); majRechChamp(); show('filtres', A('filtres')); show('compteurs', A('compteurs')); show('tout', A('tout') && !barreOn('tout')); show('legende', barreOn('legende') ? true : A('legende')); show('commune-ctl', A('commune')); show('iti-btn', A('iti') && !barreOn('iti')); show('prog-btn', A('prog') && !barreOn('prog') && cfg.prog.inds.length > 0); { const pb = document.getElementById('prog-btn'); if (pb) pb.textContent = avecIco('prog', opt('lib_prog', LIB.prog[1])); } placerCommune(); dessinerBarre();
   const racine = document.documentElement;
   if (racine && racine.style) { [['--larg-popup', 'larg_popup', 300], ['--haut-popup', 'haut_popup', 260], ['--larg-fiche', 'larg_fiche', 400], ['--fs-legende', 'taille_legende', 13], ['--larg-pop-leg', 'larg_pop_leg', 260], ['--haut-pop-leg', 'haut_pop_leg', 360]].forEach(([v, o, d]) => racine.style.setProperty(v, (+opt(o, d) || d) + 'px')); racine.style.setProperty('--liste-max', +opt('liste_max', 0) > 0 ? (+opt('liste_max', 0) + 'px') : 'none'); racine.style.setProperty('--larg-gauche', (+opt('largeur_gauche', 300) || 300) + 'px'); racine.style.setProperty('--police', POLICES[opt('police', 'Système (par défaut)')] || POLICES['Système (par défaut)']); racine.style.setProperty('--fs-popup', (+opt('taille_popup', 13) || 13) + 'px'); racine.style.setProperty('--fs-fiche', (+opt('taille_fiche', 14) || 14) + 'px'); } show('liste-btn', A('liste'));
   const sig = JSON.stringify([opt('ouv_liste', false), opt('ouv_legende', true)]);
@@ -542,13 +582,13 @@ function filtresBloc() {   // titre « Filtres » pliable, qui contient les filt
   const corps = filtresDefs.map(f => filtreHtml(f)).join('');
   if (!corps || opt('filtres_titre_on', true) === false) return corps;
   const ico = opt('filtres_ico', ''), tt = opt('filtres_titre', 'Filtres');
-  return `<details id="filtres-sec"${filtresSecOuvert ? ' open' : ''}><summary id="filtres-titre">${ico ? esc(ico) + ' ' : ''}${esc(tt)}</summary><div class="filtres-in">${corps}</div></details>`;
+  return `<details id="filtres-sec"${filtresSecOuvert ? ' open' : ''}><summary id="filtres-titre" data-aide="${esc(opt('aide_filtres', ''))}">${ico ? esc(ico) + ' ' : ''}${esc(tt)}</summary><div class="filtres-in">${corps}</div></details>`;
 }
 function appliquerFiltres() {
   let n = 0; const cnt = cptCols.map(c => [c, new Map()]);
   for (const m of marqueurs.values()) {
     const d = m._cifi;
-    const ok = !(d.style.regles.length ? d.style.regles.some(i => masques.has('r' + i)) : masques.has('r-1')) && (!recherche || sansAccent(d.nom).includes(recherche)) && Object.entries(filtreSel).every(([c, v]) => {
+    const ok = !(d.style.regles.length ? d.style.regles.some(i => masques.has('r' + i)) : masques.has('r-1')) && correspondRech(d) && Object.entries(filtreSel).every(([c, v]) => {
       if (!v || !v.length) return true; const df = filtresDefs.find(f => f.c === c);
       if (df && df.type === 'oui') return egalTxt(d.fv[c], df.oui);
       if (df && df.type === 'curseur') return egalTxt(d.fv[c], v.includes('__oui__') ? df.oui : df.non);
@@ -702,7 +742,7 @@ function construire() {
     if (r.lat == null || r.lng == null || r.lat === '' || r.lng === '' || !isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) { sansGps++; return; }
     const vals = donnees.get(raw.id) || raw, fv = {};
     cTous.forEach(c => { fv[c] = fmt(c, vals[c]) ?? '(vide)'; });
-    const d = { id:raw.id, nom:r.nom, vals, fv, style:styleDe(vals) };
+    const d = { id:raw.id, nom:r.nom, vals, fv, style:styleDe(vals), rk:rechIndex(vals, r.nom) };
     vus.add(raw.id); if (d.style.regles.length) d.style.regles.forEach(i => presents.add(i)); else presents.add(-1);
     let mk = marqueurs.get(raw.id);
     if (mk) mk.setLatLng([lat, lng]);
@@ -740,6 +780,69 @@ grist.onRecord(rec => {
   const ouverte = m.isPopupOpen(); m.setIcon(icone(m._cifi, true));
   if (!ouverte && cluster.hasLayer(m)) montrer(m, () => { map.panTo(m.getLatLng()); m.openPopup(); });
 });
+
+/* ================= SUGGESTIONS DE RECHERCHE ================= */
+function cacherSug() { sugIdx = -1; sugList = []; const z = document.getElementById('q-sug'); if (z) { z.innerHTML = ''; z.style.display = 'none'; } }
+function majSug() {   // propose, pendant la frappe, les établissements qui correspondent (déjà chargés : aucune requête externe)
+  const z = document.getElementById('q-sug'); if (!z) return; const q = recherche;
+  if (opt('sug_on', true) === false || q.length < (+opt('sug_min', 2) || 2)) { cacherSug(); return; }
+  const vis = [...marqueurs.values()].filter(m => cluster.hasLayer(m)).map(m => m._cifi).filter(d => correspondRech(d));
+  const score = d => { const n = sansAccent(d.nom || ''); return n.startsWith(q) ? 0 : n.split(/\s+/).some(w => w.startsWith(q)) ? 1 : n.includes(q) ? 2 : 3; };
+  const l = vis.slice().sort((a, b) => score(a) - score(b) || String(a.nom).localeCompare(String(b.nom), 'fr')).slice(0, +opt('sug_max', 8) || 8);
+  if (!l.length) { cacherSug(); return; }
+  const ic = cfg.recherche.info; sugList = l.map(d => d.id); if (sugIdx >= l.length) sugIdx = -1;
+  z.innerHTML = l.map((d, i) => `<button type="button" role="option" class="sug-i${i === sugIdx ? ' on' : ''}" data-id="${Number(d.id)}"><span>${esc(d.nom || 'Sans nom')}</span>${ic ? `<small>${esc(fmt(ic, d.vals[ic]) ?? '')}</small>` : ''}</button>`).join('') +
+    (vis.length > l.length ? `<button type="button" class="sug-tous">Voir tous les résultats (${vis.length})</button>` : '');
+  z.style.display = '';
+}
+document.addEventListener('click', e => { if (e.target.closest && !e.target.closest('#b-q')) cacherSug(); });
+
+/* ================= AIDES AU SURVOL ================= */
+const aideEl = document.createElement('div'); aideEl.id = 'aide'; aideEl.setAttribute('role', 'tooltip'); document.body.appendChild(aideEl);
+function aideMontrer(el) {
+  const t = el.getAttribute('data-aide'); if (!t || opt('aide_on', true) === false) return; clearTimeout(aideT);
+  aideT = setTimeout(() => {
+    aideEl.textContent = t; aideEl.style.display = 'block';
+    const r = el.getBoundingClientRect(), w = aideEl.offsetWidth, h = aideEl.offsetHeight; let x = r.left + r.width / 2 - w / 2, y = r.bottom + 8;
+    if (y + h > window.innerHeight - 4) y = r.top - h - 8; x = Math.max(6, Math.min(window.innerWidth - w - 6, x));
+    aideEl.style.left = x + 'px'; aideEl.style.top = Math.max(6, y) + 'px';
+  }, Math.max(0, +opt('aide_delai', 400) || 0));
+}
+function aideCacher() { clearTimeout(aideT); aideEl.style.display = 'none'; }
+['mouseover', 'focusin'].forEach(ev => document.addEventListener(ev, e => { const el = e.target.closest && e.target.closest('[data-aide]'); if (el) aideMontrer(el); }));
+['mouseout', 'focusout', 'click'].forEach(ev => document.addEventListener(ev, e => { if (ev === 'click' || (e.target.closest && e.target.closest('[data-aide]'))) aideCacher(); }));
+
+/* ================= MESSAGES PASSAGERS ================= */
+const msgEl = document.createElement('div'); msgEl.id = 'message'; msgEl.setAttribute('role', 'status'); msgEl.setAttribute('aria-live', 'polite');
+msgEl.innerHTML = '<span class="txt"></span><button type="button" class="x" aria-label="Fermer le message">✕</button>'; document.body.appendChild(msgEl);
+const MSG_STYLES = { info:['#1f4e8c', '#ffffff'], attention:['#f4821f', '#1d2733'], urgent:['#c1121f', '#ffffff'] }, msgVus = new Set();
+const msgCle = m => 'cifi-msg-' + m.texte + '|' + m.debut + '|' + m.fin;
+function msgDansDates(m) { const a = new Date(), j = a.getFullYear() + '-' + String(a.getMonth() + 1).padStart(2, '0') + '-' + String(a.getDate()).padStart(2, '0'); return (!m.debut || j >= m.debut) && (!m.fin || j <= m.fin); }
+function msgSession(m, poser) { const k = msgCle(m); if (poser) { msgVus.add(k); try { sessionStorage.setItem(k, '1'); } catch (e) { /* stockage indisponible */ } return true; } try { return sessionStorage.getItem(k) === '1' || msgVus.has(k); } catch (e) { return msgVus.has(k); } }
+function afficherMessage(i) {
+  const m = cfg.messages[i]; if (!m) return; const [fond, coul] = m.style === 'perso' ? [m.fond, m.coul] : (MSG_STYLES[m.style] || MSG_STYLES.info);
+  msgEl.style.background = fond; msgEl.style.color = coul; msgEl.className = 'ouvert ' + (m.pos === 'bas' ? 'bas' : 'haut');
+  msgEl.querySelector('.txt').textContent = (m.ico ? m.ico + ' ' : '') + m.texte; msgCourant = i; clearTimeout(msgFin);
+  if (m.duree > 0) msgFin = setTimeout(() => fermerMessage(), m.duree * 1000); if (m.rep === 'session') msgSession(m, true);
+}
+function fermerMessage(sansSuite) { clearTimeout(msgFin); msgEl.className = ''; msgCourant = null; if (sansSuite !== true) setTimeout(suivantMessage, 500); }
+function suivantMessage() {
+  if (msgCourant !== null) return;
+  while (msgFile.length) { const i = msgFile.shift(), m = cfg.messages[i]; if (m && m.actif && m.texte.trim() && msgDansDates(m)) { afficherMessage(i); return; } }
+}
+function planifierMessages() {   // un ou plusieurs messages, affichés à tour de rôle selon leur répétition et leurs dates
+  const rg = document.getElementById('reglages'); if (rg && rg.classList && rg.classList.contains('ouvert')) { msgSig = ''; return; }
+  const sig = JSON.stringify(cfg.messages); if (sig === msgSig) return; msgSig = sig;
+  msgTimers.forEach(clearInterval); msgTimers = []; msgFile = []; fermerMessage(true);
+  cfg.messages.forEach((m, i) => {
+    if (!m.actif || !m.texte.trim()) return;
+    if (m.rep === 'intervalle') { msgFile.push(i); msgTimers.push(setInterval(() => { if (m.actif && msgDansDates(m)) { msgFile.push(i); suivantMessage(); } }, Math.max(1, m.min) * 60000)); }
+    else if (m.rep === 'session') { if (!msgSession(m)) msgFile.push(i); }
+    else msgFile.push(i);
+  });
+  suivantMessage();
+}
+msgEl.querySelector('.x').addEventListener('click', () => fermerMessage());
 
 /* ================= PROGRESSION ================= */
 const progPanel = document.createElement('aside'); progPanel.id = 'prog-panel'; progPanel.setAttribute('aria-label', 'Progression'); progPanel.setAttribute('aria-hidden', 'true'); document.body.appendChild(progPanel);
@@ -918,9 +1021,33 @@ function blocStyles() {
       <label>Taille <input type="number" min="0" max="40" ${D} data-f="taille" value="${x.taille}" style="width:56px"> px</label>
       <label><input type="checkbox" ${D} data-f="gras"${x.gras ? ' checked' : ''}> Gras</label><label><input type="checkbox" ${D} data-f="ital"${x.ital ? ' checked' : ''}> Italique</label></div></li>`; }).join('')}</ul></section>`;
 }
+function blocMessages() {
+  const sel = (A, f, ch, v) => `<select ${A} data-f="${f}">${ch.map(([val, t]) => `<option value="${val}"${val === v ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
+  return `<p class="vide" style="font-size:12px">Un message passager s’affiche en bandeau sur la carte. Plusieurs messages s’affichent à tour de rôle. Décochez « Actif » pour en arrêter un.</p>
+    ${cfg.messages.map((m, i) => { const A = `data-a="ms" data-i="${i}"`, I = `data-i="${i}"`; return `<section><div class="rg-sec"><label><input type="checkbox" ${A} data-f="actif"${m.actif ? ' checked' : ''}> Actif</label>${btn('ms-prev', I, 'Aperçu')}${btn('ms-up', I, '▲', 'Monter')}${btn('ms-down', I, '▼', 'Descendre')}${btn('ms-del', I, '✕', 'Supprimer')}</div>
+      <div class="rg-l2"><input type="text" ${A} data-f="ico" value="${esc(m.ico)}" placeholder="Icône" style="max-width:70px" aria-label="Icône"><input type="text" ${A} data-f="texte" value="${esc(m.texte)}" placeholder="Texte du message" style="flex:1;min-width:200px" aria-label="Texte du message"></div>
+      <div class="rg-l2">${sel(A, 'style', [['info', 'Information'], ['attention', 'Attention'], ['urgent', 'Urgent'], ['perso', 'Couleurs personnalisées']], m.style)}${m.style === 'perso' ? `<label>Fond <input type="color" ${A} data-f="fond" value="${m.fond}"></label><label>Texte <input type="color" ${A} data-f="coul" value="${m.coul}"></label>` : ''}${sel(A, 'pos', [['haut', 'En haut de la carte'], ['bas', 'En bas de la carte']], m.pos)}</div>
+      <div class="rg-l2"><label>Durée d’affichage <input type="number" min="0" max="600" ${A} data-f="duree" value="${m.duree}" style="width:64px"> s <span class="vide">(0 = jusqu’à la fermeture)</span></label></div>
+      <div class="rg-l2">${sel(A, 'rep', [['ouverture', 'À chaque ouverture de la carte'], ['session', 'Une fois par session'], ['intervalle', 'Répété à intervalle régulier']], m.rep)}${m.rep === 'intervalle' ? `<label>toutes les <input type="number" min="1" max="240" ${A} data-f="min" value="${m.min}" style="width:64px"> min</label>` : ''}</div>
+      <div class="rg-l2"><label>Du <input type="date" ${A} data-f="debut" value="${m.debut}"></label><label>au <input type="date" ${A} data-f="fin" value="${m.fin}"></label></div></section>`; }).join('')}
+    <button type="button" class="rg-ajout" data-a="ms-add">+ Ajouter un message</button>`;
+}
+function blocRecherche() {
+  const R = cfg.recherche;
+  return `<section><h3>Barre de recherche</h3>
+    <label><input type="checkbox" data-a="rch" data-f="nom"${R.nom ? ' checked' : ''}> Rechercher dans le nom de l’établissement</label>
+    <label>Mode <select data-a="rch" data-f="mode"><option value="toutes"${R.mode === 'toutes' ? ' selected' : ''}>Une seule barre, tous les champs à la fois</option><option value="choix"${R.mode === 'choix' ? ' selected' : ''}>L’utilisateur choisit le champ (liste à côté de la barre)</option></select></label>
+    ${R.cols.map((x, i) => `<div class="rg-sec">${selCol(`data-a="rc" data-i="${i}" data-f="c"`, x.c)}<input type="text" data-a="rc" data-i="${i}" data-f="nom" value="${esc(x.nom)}" placeholder="Libellé (facultatif)" aria-label="Libellé">${btn('rc-up', `data-i="${i}"`, '▲', 'Monter')}${btn('rc-down', `data-i="${i}"`, '▼', 'Descendre')}${btn('rc-del', `data-i="${i}"`, '✕', 'Retirer')}</div>`).join('')}
+    <button type="button" class="rg-ajout" data-a="rc-add">+ Ajouter un champ de recherche (SIRET, commune…)</button>
+    <label><input type="checkbox" data-o="sug_on"${opt('sug_on', true) !== false ? ' checked' : ''}> Proposer des suggestions pendant la frappe</label>
+    <label>Nombre de suggestions <input type="number" min="3" max="20" data-o="sug_max" value="${+opt('sug_max', 8)}" style="width:64px"> · à partir de <input type="number" min="1" max="5" data-o="sug_min" value="${+opt('sug_min', 2)}" style="width:56px"> lettres</label>
+    <label>Information sous le nom dans les suggestions ${selCol('data-a="rch" data-f="info"', R.info)}</label>
+    <p class="vide" style="font-size:12px;margin:6px 0 0">Avec plusieurs mots, tous doivent être trouvés (ex. « poissonnerie amiens »). Le texte affiché dans la barre se règle dans l’onglet Général, « Éléments du panneau de gauche ».</p></section>
+    ${''}`;
+}
 function blocFiltres() {
   const selC = (at, v) => `<select ${at} aria-label="Colonne"><option value="">Colonne…</option>${allCols.map(c => `<option value="${esc(c)}"${c === v ? ' selected' : ''}>${esc(libel(c))}</option>`).join('')}</select>`;
-  return `<section><h3>Titre de la section « Filtres »</h3>
+  return blocRecherche() + `<section><h3>Titre de la section « Filtres »</h3>
     <label><input type="checkbox" data-o="filtres_titre_on"${opt('filtres_titre_on', true) !== false ? ' checked' : ''}> Afficher un titre pliable au-dessus des filtres</label>
     <label>Texte du titre <input type="text" data-o="filtres_titre" value="${esc(opt('filtres_titre', 'Filtres'))}"></label>
     <label>Symbole ou emoji devant le titre (facultatif) <input type="text" data-o="filtres_ico" value="${esc(opt('filtres_ico', ''))}" style="max-width:120px"></label>
@@ -968,7 +1095,7 @@ function blocBarre() {
     <label><input type="checkbox" ${D} data-f="ombre"${b.ombre ? ' checked' : ''}> Ombre</label></section>
     <section><h3>Boutons de la barre</h3><p class="vide" style="font-size:12px;margin:0 0 4px">Un bouton placé dans la barre disparaît du panneau de gauche. Le symbole peut être un caractère ou un emoji (vide = icône par défaut).</p>
     <ul>${b.boutons.map(x => { const E = `data-e="${x.id}"`; return `<li class="rg-ord"><div class="rg-l1"><label><input type="checkbox" data-a="bb-b" ${E} data-f="on"${x.on ? ' checked' : ''}> <b>${noms[x.id]}</b></label>${btn('bb-up', E, '▲', 'Monter')}${btn('bb-down', E, '▼', 'Descendre')}</div>
-      <div class="rg-l2"><input type="text" data-a="bb-b" ${E} data-f="txt" value="${esc(x.txt)}" placeholder="Symbole ou emoji" style="max-width:150px" aria-label="Symbole"><input type="text" data-a="bb-b" ${E} data-f="ti" value="${esc(x.ti)}" placeholder="Infobulle" aria-label="Infobulle"></div></li>`; }).join('')}</ul></section>`;
+      <div class="rg-l2"><input type="text" data-a="bb-b" ${E} data-f="txt" value="${esc(x.txt)}" placeholder="Symbole ou emoji" style="max-width:150px" aria-label="Symbole"><input type="text" data-a="bb-b" ${E} data-f="ti" value="${esc(x.ti)}" placeholder="Aide au survol (infobulle)" aria-label="Aide au survol"></div></li>`; }).join('')}</ul></section>`;
 }
 function blocEntete(k) {
   const h = cfg.entetes[k], D = `data-a="eh" data-h="${k}"`, opts_ = (val, vide) => `<option value="">${vide}</option>` + allCols.map(c => `<option value="${esc(c)}"${c === val ? ' selected' : ''}>${esc(libel(c))}</option>`).join('');
@@ -989,6 +1116,7 @@ function contenuOnglet() {
   if (onglet === 'fiche') return blocEntete('fiche') + cfg.sections.map((sec, i) => `<section><div class="rg-sec"><input type="text" value="${esc(sec.nom)}" data-a="nom" data-g="${i}" aria-label="Nom de la section" placeholder="Nom de la section">${btn('sup', `data-g="${i}"`, '▲', 'Monter')}${btn('sdown', `data-g="${i}"`, '▼', 'Descendre')}${btn('sdel', `data-g="${i}"`, 'Supprimer')}</div>${blocListe(String(i))}</section>`).join('') + '<button type="button" class="rg-ajout" data-a="sadd">+ Ajouter une section</button>';
   if (onglet === 'barre') return blocBarre();
   if (onglet === 'filtres') return blocFiltres();
+  if (onglet === 'messages') return blocMessages();
   if (onglet === 'prog') return blocProg();
   const sl = (n, ch) => `<select data-o="${n}">${ch.map(c => `<option${opt(n, ch[0]) === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
   const elts = [['q', 'Recherche par nom'], ['filtres', 'Filtres'], ['compteurs', 'Compteurs'], ['liste', 'Liste des établissements'], ['tout', 'Bouton « Voir tous les points »'], ['legende', 'Légende'], ['iti', 'Bouton « Préparer un itinéraire »'], ['commune', 'Recherche de commune (en haut à droite de la carte)']];
@@ -996,7 +1124,13 @@ function contenuOnglet() {
     <ul>${cfg.ordre.map(k => { const E = `data-e="${k}"`, L_ = LIB[k]; return `<li class="rg-ord"><div class="rg-l1"><label><input type="checkbox" data-o="aff_${k}"${opt('aff_' + k, true) !== false ? ' checked' : ''}> <b>${ELTS_GAUCHE[k]}</b></label>${btn('ord-up', E, '▲', 'Monter')}${btn('ord-down', E, '▼', 'Descendre')}</div>
       ${L_ ? `<div class="rg-l2"><input type="text" data-o="${L_[0]}" value="${esc(opt(L_[0], L_[1]))}" placeholder="Texte affiché" aria-label="Texte : ${esc(ELTS_GAUCHE[k])}">${k === 'liste' ? `<input type="text" data-o="lib_liste2" value="${esc(opt('lib_liste2', 'Masquer la liste des établissements'))}" placeholder="Texte quand la liste est ouverte" aria-label="Texte quand la liste est ouverte">` : ''}</div>` : ''}
       ${['liste', 'tout', 'iti', 'prog', 'legende'].includes(k) ? `<div class="rg-l2"><input type="text" data-o="ico_${k}" value="${esc(opt('ico_' + k, ICO_DEF[k] || ''))}" placeholder="Icône (emoji ou symbole)" style="max-width:170px" aria-label="Icône">${k === 'liste' ? `<input type="text" data-o="ico_liste2" value="${esc(opt('ico_liste2', ''))}" placeholder="Icône quand la liste est ouverte" style="max-width:210px" aria-label="Icône liste ouverte">` : ''}</div>` : ''}
+      ${['q', 'filtres', 'liste', 'tout', 'iti', 'prog', 'legende'].includes(k) ? `<div class="rg-l2"><input type="text" data-o="aide_${k}" value="${esc(opt('aide_' + k, ''))}" placeholder="Aide au survol (facultatif)" style="flex:1;min-width:200px" aria-label="Aide au survol"></div>` : ''}
       ${k === 'liste' || k === 'legende' ? `<div class="rg-l2"><label><input type="checkbox" data-o="ouv_${k}"${(k === 'liste' ? opt('ouv_liste', false) === true : opt('ouv_legende', true) !== false) ? ' checked' : ''}> déplié par défaut</label></div>` : ''}</li>`; }).join('')}</ul></section>
+    <section><h3>Aides au survol</h3>
+    <label><input type="checkbox" data-o="aide_on"${opt('aide_on', true) !== false ? ' checked' : ''}> Afficher une bulle d’aide quand on effleure un bouton</label>
+    <label>Délai avant affichage <input type="number" min="0" max="3000" data-o="aide_delai" value="${+opt('aide_delai', 400)}" style="width:72px"> ms · taille du texte <input type="number" min="10" max="20" data-o="aide_taille" value="${+opt('aide_taille', 12)}" style="width:56px"> px</label>
+    <label>Fond de la bulle <input type="color" data-o="aide_fond" value="${hex(opt('aide_fond', '')) || '#1d2733'}"> Texte <input type="color" data-o="aide_coul" value="${hex(opt('aide_coul', '')) || '#ffffff'}"></label>
+    <p class="vide" style="font-size:12px;margin:0">Le texte de l’aide de chaque bouton se saisit dans « Éléments du panneau de gauche » ci-dessous, et dans l’onglet Barre de boutons pour les boutons de la barre.</p></section>
     <section><h3>Apparence</h3>
     <label><input type="checkbox" data-o="aff_version"${opt('aff_version', true) !== false ? ' checked' : ''}> Afficher le numéro de version dans le panneau</label>
     <label>Police d’écriture ${sl('police', Object.keys(POLICES))}</label>
@@ -1026,10 +1160,11 @@ function contenuOnglet() {
 function dessiner() {
   const y = (modal.querySelector('.rg-corps') || {}).scrollTop || 0;
   modal.innerHTML = `<div class="rg-boite" role="dialog" aria-label="Configurer le widget"><div class="rg-tete"><h2>Configurer le widget</h2><span id="rg-etat" class="rg-etat">${esc(etatSauv)}</span>${btn('fermer', '', 'Fermer')}</div>
-    <div class="rg-onglets">${[['points', 'Affichage des points'], ['popup', 'Popup'], ['fiche', 'Fiche'], ['filtres', 'Filtres'], ['prog', 'Progression'], ['barre', 'Barre de boutons'], ['general', 'Général']].map(([k, t]) => `<button type="button" data-a="onglet" data-t="${k}" aria-pressed="${onglet === k}">${t}</button>`).join('')}</div>
+    <div class="rg-onglets">${[['points', 'Affichage des points'], ['popup', 'Popup'], ['fiche', 'Fiche'], ['filtres', 'Filtres'], ['messages', 'Messages'], ['prog', 'Progression'], ['barre', 'Barre de boutons'], ['general', 'Général']].map(([k, t]) => `<button type="button" data-a="onglet" data-t="${k}" aria-pressed="${onglet === k}">${t}</button>`).join('')}</div>
     <div class="rg-corps">${erreurAcces ? `<p style="color:#c1121f;font-size:13px">Impossible de lire toutes les colonnes : vérifiez que le widget est en « Accès complet » dans le panneau de droite de Grist.</p>` : ''}${contenuOnglet()}</div></div>`;
   modal.querySelector('.rg-corps').scrollTop = y;
 }
+function fermerReglages() { modal.classList.remove('ouvert'); msgSig = ''; planifierMessages(); }
 function ouvrirReglages() { dessiner(); modal.classList.add('ouvert'); }
 function etat(t) { etatSauv = t; const e = document.getElementById('rg-etat'); if (e) e.textContent = t; }
 function enregistrer() {
@@ -1042,11 +1177,11 @@ function enregistrer() {
 }
 function sauver(redessiner = true) { enregistrer(); construire(); if (redessiner) dessiner(); }
 modal.addEventListener('click', e => {
-  if (e.target === modal) { modal.classList.remove('ouvert'); return; }
+  if (e.target === modal) { fermerReglages(); return; }
   const b = e.target.closest('button[data-a]'); if (!b) return;
   const a = b.dataset.a, g = b.dataset.g, i = +b.dataset.i, r = +b.dataset.r, k = +b.dataset.k;
   switch (a) {
-    case 'fermer': modal.classList.remove('ouvert'); return;
+    case 'fermer': fermerReglages(); return;
     case 'onglet': onglet = b.dataset.t; dessiner(); return;
     case 'up': case 'down': deplacer(listeDe(g), i, a === 'up' ? -1 : 1); break;
     case 'del': listeDe(g).splice(i, 1); break;
@@ -1061,6 +1196,13 @@ modal.addEventListener('click', e => {
     case 'fl-add': cfg.filtres.push(nFiltre({})); break;
     case 'fl-up': case 'fl-down': deplacer(cfg.filtres, i, a === 'fl-up' ? -1 : 1); break;
     case 'fl-del': cfg.filtres.splice(i, 1); break;
+    case 'ms-add': cfg.messages.push(nMsg({ texte:'Nouveau message', actif:true })); break;
+    case 'ms-up': case 'ms-down': deplacer(cfg.messages, i, a === 'ms-up' ? -1 : 1); break;
+    case 'ms-del': cfg.messages.splice(i, 1); break;
+    case 'ms-prev': afficherMessage(i); return;
+    case 'rc-add': cfg.recherche.cols.push({ c:'', nom:'' }); break;
+    case 'rc-up': case 'rc-down': deplacer(cfg.recherche.cols, i, a === 'rc-up' ? -1 : 1); break;
+    case 'rc-del': cfg.recherche.cols.splice(i, 1); break;
     case 'pi-add': { const ia = allCols.find(c => /attendu/i.test(libel(c))), ifa = allCols.find(c => /contr.le.*2026/i.test(libel(c))); cfg.prog.inds.push(nInd({ nom:'Contrôles réalisés / attendus', fait:ifa || '', att:ia || '' })); break; }
     case 'pi-del': cfg.prog.inds.splice(i, 1); break;
     case 'bb-up': case 'bb-down': { const l = cfg.barre.boutons, i = l.findIndex(x => x.id === b.dataset.e), j = i + (a === 'bb-up' ? -1 : 1); if (i >= 0 && j >= 0 && j < l.length) [l[i], l[j]] = [l[j], l[i]]; break; }
@@ -1099,6 +1241,9 @@ modal.addEventListener('change', e => {
     case 'rde': R.borde = Math.max(0, Math.min(8, t.value === '' ? 3 : +t.value || 0)); break;
     case 'eh': { const H = cfg.entetes[t.dataset.h]; H[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (+t.value || 0) : t.value; break; }
     case 'eh-txt-on': cfg.entetes[t.dataset.h].txtc = t.checked ? '#1d2733' : ''; break;
+    case 'ms': { const M = cfg.messages[+t.dataset.i], f = t.dataset.f; if (M) M[f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(+t.min, Math.min(+t.max, +t.value || 0)) : t.value; break; }
+    case 'rch': cfg.recherche[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; break;
+    case 'rc': { const X = cfg.recherche.cols[+t.dataset.i]; if (X) X[t.dataset.f] = t.value; break; }
     case 'fl': { const F = cfg.filtres[+t.dataset.i], f = t.dataset.f; if (F) { if (f === 'fond-on') F.fond = t.checked ? '#fff3bf' : ''; else if (f === 'coul-on') F.coul = t.checked ? '#1d2733' : ''; else if (t.type === 'checkbox') F[f] = t.checked; else F[f] = t.value; } break; }
     case 'st': { const X = cfg.styles[t.dataset.sk], f = t.dataset.f; if (f === 'coul-on') X.coul = t.checked ? '#1d2733' : ''; else if (f === 'fond-on') X.fond = t.checked ? '#e8eef7' : ''; else if (f === 'taille') X.taille = Math.max(0, Math.min(40, +t.value || 0)); else if (t.type === 'checkbox') X[f] = t.checked; else X[f] = t.value; break; }
     case 'pg': { cfg.prog[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; break; }
@@ -1122,10 +1267,10 @@ modal.addEventListener('change', e => {
     case 'cv': R.si[k].v = t.value; break;
     default: return;
   }
-  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond') || (a === 'et' && ['couleur', 'contenu', 'bord'].includes(t.dataset.f)) || (a === 'fl' && ['type', 'fond-on', 'coul-on'].includes(t.dataset.f)) || (a === 'st' && /-on$/.test(t.dataset.f)));
+  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond') || (a === 'et' && ['couleur', 'contenu', 'bord'].includes(t.dataset.f)) || (a === 'fl' && ['type', 'fond-on', 'coul-on'].includes(t.dataset.f)) || (a === 'st' && /-on$/.test(t.dataset.f)) || (a === 'ms' && ['style', 'rep'].includes(t.dataset.f)));
 });
 modal.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.regle') && cfg.regles[+d.dataset.r]) cfg.regles[+d.dataset.r].o = d.open; }, true);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('ouvert'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerReglages(); });
 function boutonSecours() {
   const z = document.getElementById('cfg-secours'); if (!z || !peutModifier) return;
   const b = document.createElement('button'); b.type = 'button'; b.className = 'link'; b.textContent = '⚙ Configurer le widget'; b.addEventListener('click', ouvrirReglages); z.appendChild(b);
