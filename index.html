@@ -197,6 +197,18 @@
   .panel.gauche > * { flex:none; } .panel.gauche > button.link, .panel.gauche #b-liste > button.link { align-self:flex-start; margin-top:4px; }
   #b-liste { margin-top:4px; } .panel.reduit > :not(#reduire) { display:none !important; }
   .rg-ord { border-bottom:1px solid #eef1f5; }
+  .leaflet-top.leaflet-left, .leaflet-top.leaflet-right { display:flex; flex-direction:column; } .leaflet-top.leaflet-right { align-items:flex-end; } .leaflet-top .leaflet-control { flex:none; }
+  .leaflet-top.leaflet-left .panel.gauche { width:var(--larg-gauche, 300px); }
+  #barre { position:absolute; z-index:950; } #barre-btns { display:flex; gap:6px; }
+  #barre.pos-hc { top:10px; left:50%; transform:translateX(-50%); } #barre.pos-hg { top:10px; left:calc(var(--larg-gauche, 300px) + 24px); } #barre.pos-hd { top:10px; right:56px; }
+  #barre.pos-bc { bottom:30px; left:50%; transform:translateX(-50%); } #barre.pos-bg { bottom:30px; left:10px; } #barre.pos-bd { bottom:30px; right:10px; }
+  .bb { width:var(--bb-t, 36px); height:var(--bb-t, 36px); display:inline-flex; align-items:center; justify-content:center; padding:0; font:700 18px system-ui, sans-serif; cursor:pointer;
+    background:var(--bb-fond, #fff); color:var(--bb-coul, #1d2733); border:var(--bb-bw, 1px) solid var(--bb-bc, #d5dbe3); border-radius:var(--bb-r, 10px); box-shadow:var(--bb-sh, 0 1px 4px #0004); }
+  .bb:hover { filter:brightness(.94); } .bb[aria-pressed=true] { outline:2px solid var(--accent); }
+  #barre .pop { position:absolute; display:none; min-width:210px; max-width:320px; max-height:60vh; overflow:auto; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 2px 10px #0003; padding:8px; }
+  #barre .pop.ouvert { display:block; } #barre.haut .pop { top:calc(100% + 8px); } #barre.bas .pop { bottom:calc(100% + 8px); }
+  #barre.ga .pop { left:0; } #barre.dr .pop { right:0; } #barre.ce .pop { left:50%; transform:translateX(-50%); }
+  .hote { position:absolute; left:50%; transform:translateX(-50%); z-index:900; } #hote-hc { top:10px; } #hote-bc { bottom:30px; }
 </style>
 </head>
 <body>
@@ -205,16 +217,23 @@
 <aside id="fiche-panel" aria-label="Fiche de l’établissement" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '21';
+const VERSION = '24';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
-const swatch = (f, c, t, bc, be) => `<span class="sw"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * 0.7))}px solid ${bc};`) : ''}width:22px;height:22px;font-size:${String(t || '').length > 2 ? 8 : 12}px"><span>${esc(t || '')}</span></span></span>`;
+const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
+const swatch = (f, c, t, bc, be) => pastille(f, c, t, bc, be, 22);
+function etiquetteHtml(st, e, vals) {   // pastille devant un nom : identique au point ou entièrement personnalisée
+  if (e.forme === 'aucune') return '';
+  const f = e.forme === 'point' ? st.forme : e.forme, c = e.couleur === 'point' ? st.couleur : e.coul, bc = e.bord === 'point' ? st.bordc : e.bordc, be = e.bord === 'point' ? st.borde : e.borde;
+  let t = st.contenu; if (e.contenu === 'rien') t = ''; else if (e.contenu === 'texte') t = e.texte; else if (e.contenu === 'colonne' && vals && e.col) t = String(fmt(e.col, vals[e.col]) ?? '').slice(0, 6);
+  return pastille(f, c, t, bc, be, e.taille);
+}
 const STYLES = { '':'Valeur normale', 'b':'Valeur en gras', 'i':'Valeur en italique', 'badge':'Valeur en pastille' };
 const OPS = [['=','est égal à'],['≠','est différent de'],['contient','contient'],['>','est supérieur à'],['<','est inférieur à'],['vide','est vide'],['rempli','n’est pas vide']];
 const DEFAUT = { couleur:'#1f4e8c', forme:'rond', bordc:'#ffffff', borde:3 };
 const POLICES = { 'Système (par défaut)':'system-ui,"Segoe UI",Roboto,sans-serif', 'Marianne':'Marianne,Arial,sans-serif', 'Arial':'Arial,Helvetica,sans-serif', 'Verdana':'Verdana,Geneva,sans-serif', 'Georgia':'Georgia,serif', 'Trebuchet MS':'"Trebuchet MS",Helvetica,sans-serif' };
 const LISTE_MODES = ['Forme et couleur du point', 'Pastille de couleur', 'Emoji ou texte du point', 'Valeur d’une colonne', 'Rien'];
-const POS_COMMUNE = ['Haut à droite', 'Bas à droite', 'Bas à gauche', 'Haut à gauche', 'Dans le panneau de gauche'];
+const POS_COMMUNE = ['Haut à droite', 'Haut au centre', 'Haut à gauche', 'Bas à droite', 'Bas au centre', 'Bas à gauche', 'Dans le panneau de gauche'];
 
 const geopf = (l, f) => `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=${f}&LAYER=${l}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`;
 const fonds = {
@@ -248,7 +267,19 @@ const LIB = { q:['lib_q', 'Rechercher un nom…'], liste:['lib_liste', 'Afficher
 const hex = c => /^#[0-9a-f]{6}$/i.test(c || '') ? c : '';
 const nEnt = h => { h = h || {}; return { titre:h.titre || '', sous:h.sous || '', etiq:h.etiq !== false, fond:['neutre', 'point', 'perso'].includes(h.fond) ? h.fond : 'neutre', fondc:hex(h.fondc) || '#f6f8fb', txtc:hex(h.txtc), taille:+h.taille || 0 }; };
 const nDef = d => { d = d || {}; return { couleur:hex(d.couleur) || DEFAUT.couleur, forme:FORMES.includes(d.forme) ? d.forme : DEFAUT.forme, bordc:hex(d.bordc) || DEFAUT.bordc, borde:(d.borde === undefined || d.borde === null || isNaN(+d.borde)) ? DEFAUT.borde : Math.max(0, Math.min(8, +d.borde)) }; };
-const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(s => ({ nom:s.nom || '', cols:(s.cols || []).map(nEntree) })), regles:(c.regles || []).map(nRegle), defaut:nDef(c.defaut), entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, ordre:normOrdre(c.ordre) }; };
+const BARRE_POS = { 'Haut au centre':'hc', 'Haut à gauche':'hg', 'Haut à droite':'hd', 'Bas au centre':'bc', 'Bas à gauche':'bg', 'Bas à droite':'bd' };
+const BOUTONS_DEF = [{ id:'zoomin', on:true, txt:'', ti:'Zoomer' }, { id:'zoomout', on:true, txt:'', ti:'Dézoomer' }, { id:'tout', on:false, txt:'', ti:'Voir tous les points' }, { id:'legende', on:false, txt:'', ti:'Légende' }, { id:'iti', on:false, txt:'', ti:'Préparer un itinéraire' }];
+const ICONES_BARRE = { zoomin:'+', zoomout:'−', tout:'⤢', iti:'🧭', legende:'<svg viewBox="0 0 24 24" width="60%" height="60%" fill="currentColor" aria-hidden="true"><path d="M12 2 1 8l11 6 11-6-11-6zm0 13.2L3.7 10.7 1 12.2l11 6 11-6-2.7-1.5L12 15.2zm0 4L3.7 14.7 1 16.2l11 6 11-6-2.7-1.5L12 19.2z"/></svg>' };
+const nBarre = b => {
+  b = b || {}; const sv = Array.isArray(b.boutons) ? b.boutons : [], out = [];
+  sv.forEach(x => { const d = BOUTONS_DEF.find(y => y.id === x.id); if (d && !out.some(o => o.id === d.id)) out.push({ id:d.id, on: x.on === undefined ? d.on : x.on === true, txt:String(x.txt || ''), ti:String(x.ti || d.ti) }); });
+  BOUTONS_DEF.forEach(d => { if (!out.some(o => o.id === d.id)) out.push({ ...d }); });
+  return { pos:Object.keys(BARRE_POS).includes(b.pos) ? b.pos : 'Haut au centre', taille:Math.max(26, Math.min(60, +b.taille || 36)), forme:['carre', 'arrondi', 'rond'].includes(b.forme) ? b.forme : 'arrondi',
+    fond:hex(b.fond) || '#ffffff', coul:hex(b.coul) || '#1d2733', bordc:hex(b.bordc) || '#d5dbe3', borde:Math.max(0, Math.min(4, b.borde === undefined ? 1 : (+b.borde || 0))), ombre:b.ombre !== false, boutons:out };
+};
+const nEtq = e => { e = e || {}; return { forme:['point', 'rond', 'goutte', 'carre', 'losange', 'triangle', 'aucune'].includes(e.forme) ? e.forme : 'point', couleur:e.couleur === 'fixe' ? 'fixe' : 'point', coul:hex(e.coul) || '#1f4e8c',
+  contenu:['point', 'rien', 'texte', 'colonne'].includes(e.contenu) ? e.contenu : 'point', texte:String(e.texte || ''), col:String(e.col || ''), taille:Math.max(12, Math.min(44, +e.taille || 22)), bord:e.bord === 'perso' ? 'perso' : 'point', bordc:hex(e.bordc) || '#ffffff', borde:Math.max(0, Math.min(8, e.borde === undefined ? 2 : (+e.borde || 0))) }; };
+const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(s => ({ nom:s.nom || '', cols:(s.cols || []).map(nEntree) })), regles:(c.regles || []).map(nRegle), defaut:nDef(c.defaut), entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, ordre:normOrdre(c.ordre), barre:nBarre(c.barre), etiquettes:{ liste:nEtq((c.etiquettes || {}).liste), legende:nEtq((c.etiquettes || {}).legende) } }; };
 let opts = {}, cfg = norm(), lastRec = null, lastMap = null, labels = {}, types = {}, allCols = [], donnees = new Map(), tid = null, erreurAcces = '', labelsCharges = false, labelsT = {}, typesT = {}, visT = {}, refTabs = {}, lieeOuverte = false;
 let recherche = '', premierChargement = true, idSelectionne = null, ficheId = null, sansGps = 0, regroupPrec = true, sigFiltres = '', listeOuverte = false, cptCols = [], sigAff = '', legOuverte = true, legCats = [];
 const marqueurs = new Map(), masques = new Set(), filtreSel = {}, etatSections = new Map();
@@ -307,7 +338,25 @@ function styleDe(vals) {
 }
 
 /* ================= CARTE ET PANNEAU DE GAUCHE ================= */
-const map = L.map('map', { center:[46.6,2.5], zoom:6, minZoom:4, maxZoom:21, zoomSnap:0.5, zoomDelta:0.5, wheelPxPerZoomLevel:90, layers:[fonds['Plan IGN']] });
+const map = L.map('map', { center:[46.6,2.5], zoom:6, minZoom:4, maxZoom:21, zoomSnap:0.5, zoomDelta:0.5, wheelPxPerZoomLevel:90, zoomControl:false, layers:[fonds['Plan IGN']] });
+const barre = document.createElement('div'); barre.id = 'barre'; barre.innerHTML = '<div id="barre-btns"></div><div class="pop" id="pop-legende"></div>'; document.body.appendChild(barre);
+['hc', 'bc'].forEach(k => { const h = document.createElement('div'); h.id = 'hote-' + k; h.className = 'hote'; document.body.appendChild(h); });
+const barreOn = id => cfg.barre.boutons.some(x => x.id === id && x.on);
+function dessinerBarre() {
+  const b = cfg.barre, cl = BARRE_POS[b.pos] || 'hc'; barre.className = `pos-${cl} ${cl[0] === 'b' ? 'bas' : 'haut'} ${cl[1] === 'd' ? 'dr' : cl[1] === 'c' ? 'ce' : 'ga'}`;
+  const st = barre.style, rayon = { carre:'3px', arrondi:'10px', rond:'50%' }[b.forme];
+  st.setProperty('--bb-t', b.taille + 'px'); st.setProperty('--bb-fond', b.fond); st.setProperty('--bb-coul', b.coul); st.setProperty('--bb-bc', b.bordc); st.setProperty('--bb-bw', b.borde + 'px'); st.setProperty('--bb-r', rayon); st.setProperty('--bb-sh', b.ombre ? '0 1px 4px #0004' : 'none');
+  const pop = barre.querySelector('#pop-legende'), leg = document.getElementById('legende'), pan = document.querySelector('.panel.gauche');
+  barre.querySelector('#barre-btns').innerHTML = b.boutons.filter(x => x.on).map(x => `<button type="button" class="bb" data-b="${x.id}" title="${esc(x.ti)}" aria-label="${esc(x.ti)}"${x.id === 'legende' ? ` aria-pressed="${pop.classList.contains('ouvert')}"` : ''}>${x.txt ? esc(x.txt) : ICONES_BARRE[x.id]}</button>`).join('');
+  if (leg && pop && pan) { if (barreOn('legende')) { if (leg.parentNode !== pop) pop.appendChild(leg); } else { if (leg.parentNode !== pan) pan.appendChild(leg); pop.classList.remove('ouvert'); } }
+  const hc = document.getElementById('hote-hc'), bc = document.getElementById('hote-bc');   // la recherche de commune se décale si la barre occupe le même emplacement
+  if (hc) hc.style.top = (b.pos === 'Haut au centre' ? b.taille + 20 : 10) + 'px'; if (bc) bc.style.bottom = (b.pos === 'Bas au centre' ? b.taille + 40 : 30) + 'px';
+}
+barre.addEventListener('click', e => {
+  const x = e.target.closest('button[data-b]'); if (!x) return; const id = x.dataset.b;
+  if (id === 'zoomin') map.zoomIn(); else if (id === 'zoomout') map.zoomOut(); else if (id === 'tout') recentrer(); else if (id === 'iti') ouvrirIti();
+  else if (id === 'legende') { const o = barre.querySelector('#pop-legende').classList.toggle('ouvert'); x.setAttribute('aria-pressed', String(o)); }
+});
 const communeCtl = L.control({ position:'topright' });
 const creerCommune = () => {
   const d = L.DomUtil.create('div', 'panel commune'); d.id = 'commune-ctl';
@@ -338,17 +387,18 @@ const creerCommune = () => {
 };
 communeCtl.onAdd = creerCommune;
 communeCtl.addTo(map);
-let posCommune = POS_COMMUNE[0], communeSurCarte = true;
+let posCommune = '', communeSurCarte = true;
 function placerCommune() {
   const pos = opt('pos_commune', POS_COMMUNE[0]); if (pos === posCommune) return; posCommune = pos;
-  const coins = { 'Haut à droite':'topright', 'Bas à droite':'bottomright', 'Bas à gauche':'bottomleft', 'Haut à gauche':'topleft' }, zone = document.getElementById('commune-zone');
-  if (pos === POS_COMMUNE[4]) {
-    if (communeSurCarte) { map.removeControl(communeCtl); communeSurCarte = false; }
-    if (zone) { zone.innerHTML = ''; const el = creerCommune(); el.classList.add('dans-panneau'); zone.appendChild(el); }
-  } else {
-    if (zone) zone.innerHTML = '';
-    communeCtl.options.position = coins[pos] || 'topright';
-    if (communeSurCarte) communeCtl.setPosition(communeCtl.options.position); else { communeCtl.addTo(map); communeSurCarte = true; }
+  const coins = { 'Haut à droite':'topright', 'Haut à gauche':'topleft', 'Bas à droite':'bottomright', 'Bas à gauche':'bottomleft' }, zone = document.getElementById('commune-zone'), hc = document.getElementById('hote-hc'), bc = document.getElementById('hote-bc');
+  if (zone) zone.innerHTML = ''; if (hc) hc.innerHTML = ''; if (bc) bc.innerHTML = '';
+  if (!coins[pos] && communeSurCarte) { map.removeControl(communeCtl); communeSurCarte = false; }
+  if (pos === POS_COMMUNE[6]) { if (zone) { const el = creerCommune(); el.classList.add('dans-panneau'); zone.appendChild(el); } }
+  else if (pos === POS_COMMUNE[1]) { if (hc) hc.appendChild(creerCommune()); }
+  else if (pos === POS_COMMUNE[4]) { if (bc) bc.appendChild(creerCommune()); }
+  else {
+    if (communeSurCarte) communeCtl.setPosition(coins[pos]); else { communeCtl.options.position = coins[pos]; communeCtl.addTo(map); communeSurCarte = true; }
+    const c = communeCtl.getContainer(); if (c) c.style.order = pos.startsWith('Haut') ? '-1' : '0';
   }
 }
 L.control.layers(fonds, null, { position:'topright' }).addTo(map);
@@ -411,8 +461,9 @@ function allerA(id) {
 function recentrer() { const p = [...marqueurs.values()].filter(m => cluster.hasLayer(m)).map(m => m.getLatLng()); if (p.length) map.fitBounds(p, { padding:[40,40], maxZoom:17 }); }
 function majLegende() {
   const z = document.getElementById('legende'); if (!z) return;
-  z.innerHTML = legCats.length ? `<hr><button type="button" id="leg-toggle" class="titre" aria-expanded="${legOuverte}"><strong>${esc(opt('lib_legende', 'Légende'))}</strong> <span>${legOuverte ? '▾' : '▸'}</span></button>` +
-    (legOuverte ? legCats.map(c => `<button type="button" data-k="${esc(c.k)}" aria-pressed="${!masques.has(c.k)}">${swatch(c.forme, c.couleur, c.emoji, c.bordc, c.borde)}${esc(c.label)}</button>`).join('') : '') : '';
+  const dansBarre = barreOn('legende'), ouvert = dansBarre || legOuverte, titre = esc(opt('lib_legende', 'Légende'));
+  z.innerHTML = legCats.length ? (dansBarre ? `<strong>${titre}</strong>` : `<hr><button type="button" id="leg-toggle" class="titre" aria-expanded="${legOuverte}"><strong>${titre}</strong> <span>${legOuverte ? '▾' : '▸'}</span></button>`) +
+    (ouvert ? legCats.map(c => `<button type="button" data-k="${esc(c.k)}" aria-pressed="${!masques.has(c.k)}">${etiquetteHtml({ forme:c.forme, couleur:c.couleur, contenu:c.emoji, bordc:c.bordc, borde:c.borde }, cfg.etiquettes.legende, null)}${esc(c.label)}</button>`).join('') : '') : '';
 }
 function setListe(ouvert) {
   const b = document.getElementById('liste-btn'), l = document.getElementById('liste'); if (!b || !l) return;
@@ -427,21 +478,14 @@ function appliquerAffichage() {   // éléments du panneau de gauche affichés o
   const qq = document.getElementById('q'); if (qq) qq.placeholder = opt('lib_q', LIB.q[1]);
   const tt = document.getElementById('tout'); if (tt) tt.textContent = opt('lib_tout', LIB.tout[1]);
   const ib = document.getElementById('iti-btn'); if (ib) ib.textContent = opt('lib_iti', LIB.iti[1]);
-  show('q', A('q')); show('filtres', A('filtres')); show('compteurs', A('compteurs')); show('tout', A('tout')); show('legende', A('legende')); show('commune-ctl', A('commune')); show('iti-btn', A('iti')); placerCommune();
+  show('q', A('q')); show('filtres', A('filtres')); show('compteurs', A('compteurs')); show('tout', A('tout') && !barreOn('tout')); show('legende', barreOn('legende') ? true : A('legende')); show('commune-ctl', A('commune')); show('iti-btn', A('iti') && !barreOn('iti')); placerCommune(); dessinerBarre();
   const racine = document.documentElement;
-  if (racine && racine.style) { racine.style.setProperty('--police', POLICES[opt('police', 'Système (par défaut)')] || POLICES['Système (par défaut)']); racine.style.setProperty('--fs-popup', (+opt('taille_popup', 13) || 13) + 'px'); racine.style.setProperty('--fs-fiche', (+opt('taille_fiche', 14) || 14) + 'px'); } show('liste-btn', A('liste'));
+  if (racine && racine.style) { racine.style.setProperty('--larg-gauche', (+opt('largeur_gauche', 300) || 300) + 'px'); racine.style.setProperty('--police', POLICES[opt('police', 'Système (par défaut)')] || POLICES['Système (par défaut)']); racine.style.setProperty('--fs-popup', (+opt('taille_popup', 13) || 13) + 'px'); racine.style.setProperty('--fs-fiche', (+opt('taille_fiche', 14) || 14) + 'px'); } show('liste-btn', A('liste'));
   const sig = JSON.stringify([opt('ouv_liste', false), opt('ouv_legende', true)]);
   if (sig !== sigAff) { sigAff = sig; listeOuverte = opt('ouv_liste', false) === true; legOuverte = opt('ouv_legende', true) !== false; }
   setListe(listeOuverte && A('liste')); majLegende();
 }
-function devant(d) {
-  const mode = opt('liste_devant', LISTE_MODES[0]), s = d.style;
-  if (mode === LISTE_MODES[4]) return '';
-  if (mode === LISTE_MODES[1]) return `<i style="background:${s.couleur}"></i>`;
-  if (mode === LISTE_MODES[2]) return `<span class="sw" style="font-size:15px">${esc(s.contenu || '•')}</span>`;
-  if (mode === LISTE_MODES[3]) { const c = opt('liste_col', ''), v = c ? fmt(c, d.vals[c]) : null; return `<span class="sw" style="width:auto;max-width:90px;font-size:11px;color:var(--muted)">${esc(v ?? '')}</span>`; }
-  return swatch(s.forme, s.couleur, s.contenu, s.bordc, s.borde);
-}
+function devant(d) { return etiquetteHtml(d.style, cfg.etiquettes.liste, d.vals); }
 function majListe() {
   if (!listeOuverte) return;
   const l = [...marqueurs.values()].filter(m => cluster.hasLayer(m)).sort((a, b) => String(a._cifi.nom).localeCompare(String(b._cifi.nom), 'fr')).slice(0, 500);
@@ -784,6 +828,29 @@ function carteRegle(r, i) {
       ${r.bulle.t && r.bulle.t !== 'signal' ? `<select data-a="rbs" ${R} aria-label="Contenu de la bulle"><option value=""${!r.bulle.src ? ' selected' : ''}>Texte fixe</option><option value="col"${r.bulle.src === 'col' ? ' selected' : ''}>Valeur d’une colonne</option></select>` + (r.bulle.src === 'col' ? selCol(`data-a="rbc" ${R}`, r.bulle.c) : `<input type="text" data-a="rbe" ${R} value="${esc(r.bulle.e)}" placeholder="ex. ! ou À contrôler" style="max-width:150px" aria-label="Texte de la bulle">`) : ''}
       ${r.bulle.t ? `<input type="color" data-a="rbk" ${R} value="${r.bulle.couleur}" aria-label="Couleur de la bulle">` + (r.bulle.t !== 'signal' ? `<label><input type="checkbox" data-a="rbp" ${R}${r.bulle.pulse ? ' checked' : ''}> pulsé</label>` : '') : ''}</div></div></details>`;
 }
+function blocEtiquette(k, titre) {
+  const e = cfg.etiquettes[k], D = `data-a="et" data-ek="${k}"`, S = (f, ch, v) => `<select ${D} data-f="${f}">${ch.map(([val, t]) => `<option value="${val}"${val === v ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
+  return `<section><h3>${titre}</h3>
+    <label>Forme ${S('forme', [['point', 'Identique au point'], ['rond', 'Rond'], ['goutte', 'Goutte'], ['carre', 'Carré'], ['losange', 'Losange'], ['triangle', 'Triangle'], ['aucune', 'Aucune étiquette']], e.forme)}</label>
+    <label>Couleur ${S('couleur', [['point', 'Identique au point'], ['fixe', 'Couleur fixe']], e.couleur)} ${e.couleur === 'fixe' ? `<input type="color" ${D} data-f="coul" value="${e.coul}" aria-label="Couleur">` : ''}</label>
+    <label>Contenu ${S('contenu', [['point', 'Identique au point'], ['rien', 'Rien'], ['texte', 'Texte ou emoji fixe']].concat(k === 'liste' ? [['colonne', 'Valeur d’une colonne']] : []), e.contenu)}
+      ${e.contenu === 'texte' ? `<input type="text" ${D} data-f="texte" value="${esc(e.texte)}" placeholder="ex. ● ou AF" style="max-width:110px" aria-label="Texte">` : e.contenu === 'colonne' ? `<select ${D} data-f="col"><option value="">Choisir…</option>${allCols.map(c => `<option value="${esc(c)}"${c === e.col ? ' selected' : ''}>${esc(libel(c))}</option>`).join('')}</select>` : ''}</label>
+    <label>Bordure ${S('bord', [['point', 'Identique au point'], ['perso', 'Personnalisée']], e.bord)} ${e.bord === 'perso' ? `<input type="color" ${D} data-f="bordc" value="${e.bordc}" aria-label="Couleur de la bordure"> <input type="number" min="0" max="8" ${D} data-f="borde" value="${e.borde}" style="width:56px" aria-label="Épaisseur"> px` : ''}</label>
+    <label>Taille <input type="number" min="12" max="44" ${D} data-f="taille" value="${e.taille}"> px</label></section>`;
+}
+function blocBarre() {
+  const b = cfg.barre, D = 'data-a="bb"', noms = { zoomin:'Zoom avant (+)', zoomout:'Zoom arrière (−)', tout:'Voir tous les points', legende:'Légende', iti:'Préparer un itinéraire' };
+  return `<section><h3>Apparence de la barre</h3>
+    <label>Emplacement <select ${D} data-f="pos">${Object.keys(BARRE_POS).map(p => `<option${p === b.pos ? ' selected' : ''}>${p}</option>`).join('')}</select></label>
+    <label>Taille des boutons <input type="number" min="26" max="60" ${D} data-f="taille" value="${b.taille}"> px</label>
+    <label>Forme <select ${D} data-f="forme">${[['carre', 'Carré'], ['arrondi', 'Coins arrondis'], ['rond', 'Rond']].map(([v, t]) => `<option value="${v}"${v === b.forme ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label>Fond <input type="color" ${D} data-f="fond" value="${b.fond}"> Icône <input type="color" ${D} data-f="coul" value="${b.coul}"></label>
+    <label>Bordure <input type="color" ${D} data-f="bordc" value="${b.bordc}"> <input type="number" min="0" max="4" ${D} data-f="borde" value="${b.borde}" style="width:56px"> px</label>
+    <label><input type="checkbox" ${D} data-f="ombre"${b.ombre ? ' checked' : ''}> Ombre</label></section>
+    <section><h3>Boutons de la barre</h3><p class="vide" style="font-size:12px;margin:0 0 4px">Un bouton placé dans la barre disparaît du panneau de gauche. Le symbole peut être un caractère ou un emoji (vide = icône par défaut).</p>
+    <ul>${b.boutons.map(x => { const E = `data-e="${x.id}"`; return `<li class="rg-ord"><div class="rg-l1"><label><input type="checkbox" data-a="bb-b" ${E} data-f="on"${x.on ? ' checked' : ''}> <b>${noms[x.id]}</b></label>${btn('bb-up', E, '▲', 'Monter')}${btn('bb-down', E, '▼', 'Descendre')}</div>
+      <div class="rg-l2"><input type="text" data-a="bb-b" ${E} data-f="txt" value="${esc(x.txt)}" placeholder="Symbole ou emoji" style="max-width:150px" aria-label="Symbole"><input type="text" data-a="bb-b" ${E} data-f="ti" value="${esc(x.ti)}" placeholder="Infobulle" aria-label="Infobulle"></div></li>`; }).join('')}</ul></section>`;
+}
 function blocEntete(k) {
   const h = cfg.entetes[k], D = `data-a="eh" data-h="${k}"`, opts_ = (val, vide) => `<option value="">${vide}</option>` + allCols.map(c => `<option value="${esc(c)}"${c === val ? ' selected' : ''}>${esc(libel(c))}</option>`).join('');
   return `<section><h3>En-tête ${k === 'popup' ? 'du popup' : 'de la fiche'}</h3>
@@ -801,6 +868,7 @@ function contenuOnglet() {
     ${cfg.regles.map(carteRegle).join('')}<button type="button" class="rg-ajout" data-a="radd">+ Ajouter une règle</button>`;
   if (onglet === 'popup') return blocEntete('popup') + `<section><h3>Colonnes du popup (clic sur un point)</h3>${blocListe('p')}</section>`;
   if (onglet === 'fiche') return blocEntete('fiche') + cfg.sections.map((sec, i) => `<section><div class="rg-sec"><input type="text" value="${esc(sec.nom)}" data-a="nom" data-g="${i}" aria-label="Nom de la section" placeholder="Nom de la section">${btn('sup', `data-g="${i}"`, '▲', 'Monter')}${btn('sdown', `data-g="${i}"`, '▼', 'Descendre')}${btn('sdel', `data-g="${i}"`, 'Supprimer')}</div>${blocListe(String(i))}</section>`).join('') + '<button type="button" class="rg-ajout" data-a="sadd">+ Ajouter une section</button>';
+  if (onglet === 'barre') return blocBarre();
   const sl = (n, ch) => `<select data-o="${n}">${ch.map(c => `<option${opt(n, ch[0]) === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
   const elts = [['q', 'Recherche par nom'], ['filtres', 'Filtres'], ['compteurs', 'Compteurs'], ['liste', 'Liste des établissements'], ['tout', 'Bouton « Voir tous les points »'], ['legende', 'Légende'], ['iti', 'Bouton « Préparer un itinéraire »'], ['commune', 'Recherche de commune (en haut à droite de la carte)']];
   return `<section><h3>Éléments du panneau de gauche</h3><p class="vide" style="font-size:12px;margin:0 0 4px">Cochez les éléments à proposer, changez leur ordre avec ▲ ▼ et modifiez leurs textes. Le panneau défile si les éléments dépassent la hauteur du widget.</p>
@@ -811,8 +879,9 @@ function contenuOnglet() {
     <label>Police d’écriture ${sl('police', Object.keys(POLICES))}</label>
     <p class="vide" style="font-size:12px;margin:0 0 4px">La police Marianne s’affiche si elle est installée sur le poste, ou si ses fichiers sont placés dans le dossier lib/fonts du widget.</p>
     <label>Emplacement de la recherche de commune ${sl('pos_commune', POS_COMMUNE)}</label>
-    <label>Devant le nom, dans la liste des établissements ${sl('liste_devant', LISTE_MODES)}</label>
-    ${opt('liste_devant', LISTE_MODES[0]) === LISTE_MODES[3] ? `<label>Colonne affichée <select data-o="liste_col"><option value="">Choisir…</option>${allCols.map(c => `<option value="${esc(c)}"${c === opt('liste_col', '') ? ' selected' : ''}>${esc(libel(c))}</option>`).join('')}</select></label>` : ''}</section>
+    <label>Largeur du panneau de gauche <input type="number" min="220" max="520" data-o="largeur_gauche" value="${+opt('largeur_gauche', 300)}"> px</label></section>
+    ${blocEtiquette('liste', 'Étiquette devant le nom (liste des établissements)')}
+    ${blocEtiquette('legende', 'Étiquette de la légende')}
     <section><h3>Itinéraire</h3><label>Adresse du service de calcul d’itinéraire <input type="text" data-o="iti_url" value="${esc(opt('iti_url', 'https://data.geopf.fr/navigation/itineraire'))}"></label>
     <label>Ressource <input type="text" data-o="iti_resource" value="${esc(opt('iti_resource', 'bdtopo-osrm'))}"></label></section>
     <section><h3>Fiche et points</h3><label>Sections dépliées à l’ouverture ${sl('ouverture', ['Première section', 'Toutes', 'Aucune'])}</label>
@@ -825,7 +894,7 @@ function contenuOnglet() {
 function dessiner() {
   const y = (modal.querySelector('.rg-corps') || {}).scrollTop || 0;
   modal.innerHTML = `<div class="rg-boite" role="dialog" aria-label="Configurer le widget"><div class="rg-tete"><h2>Configurer le widget</h2><span id="rg-etat" class="rg-etat">${esc(etatSauv)}</span>${btn('fermer', '', 'Fermer')}</div>
-    <div class="rg-onglets">${[['points', 'Affichage des points'], ['popup', 'Popup'], ['fiche', 'Fiche'], ['general', 'Général']].map(([k, t]) => `<button type="button" data-a="onglet" data-t="${k}" aria-pressed="${onglet === k}">${t}</button>`).join('')}</div>
+    <div class="rg-onglets">${[['points', 'Affichage des points'], ['popup', 'Popup'], ['fiche', 'Fiche'], ['barre', 'Barre de boutons'], ['general', 'Général']].map(([k, t]) => `<button type="button" data-a="onglet" data-t="${k}" aria-pressed="${onglet === k}">${t}</button>`).join('')}</div>
     <div class="rg-corps">${erreurAcces ? `<p style="color:#c1121f;font-size:13px">Impossible de lire toutes les colonnes : vérifiez que le widget est en « Accès complet » dans le panneau de droite de Grist.</p>` : ''}${contenuOnglet()}</div></div>`;
   modal.querySelector('.rg-corps').scrollTop = y;
 }
@@ -857,6 +926,7 @@ modal.addEventListener('click', e => {
     case 'rdel': cfg.regles.splice(r, 1); break;
     case 'cadd': cfg.regles[r].si.push({ c:'', op:'=', v:'' }); break;
     case 'cdel': cfg.regles[r].si.splice(k, 1); break;
+    case 'bb-up': case 'bb-down': { const l = cfg.barre.boutons, i = l.findIndex(x => x.id === b.dataset.e), j = i + (a === 'bb-up' ? -1 : 1); if (i >= 0 && j >= 0 && j < l.length) [l[i], l[j]] = [l[j], l[i]]; break; }
     case 'ord-up': case 'ord-down': { const i = cfg.ordre.indexOf(b.dataset.e), j = i + (a === 'ord-up' ? -1 : 1); if (i >= 0 && j >= 0 && j < cfg.ordre.length) [cfg.ordre[i], cfg.ordre[j]] = [cfg.ordre[j], cfg.ordre[i]]; break; }
     default: return;
   }
@@ -892,6 +962,9 @@ modal.addEventListener('change', e => {
     case 'rde': R.borde = Math.max(0, Math.min(8, t.value === '' ? 3 : +t.value || 0)); break;
     case 'eh': { const H = cfg.entetes[t.dataset.h]; H[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (+t.value || 0) : t.value; break; }
     case 'eh-txt-on': cfg.entetes[t.dataset.h].txtc = t.checked ? '#1d2733' : ''; break;
+    case 'bb': { cfg.barre[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(+t.min, Math.min(+t.max, t.value === '' ? +t.defaultValue : +t.value)) : t.value; break; }
+    case 'bb-b': { const x = cfg.barre.boutons.find(y => y.id === t.dataset.e); if (x) x[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; break; }
+    case 'et': { const E = cfg.etiquettes[t.dataset.ek], f = t.dataset.f; if (t.type === 'number') { const n = t.value === '' ? +t.defaultValue : +t.value; E[f] = Math.max(+t.min, Math.min(+t.max, isNaN(n) ? +t.min : n)); } else E[f] = t.value; break; }
     case 'nom': cfg.sections[+g].nom = t.value; break;
     case 'defc': cfg.defaut.couleur = t.value; break;
     case 'deff': cfg.defaut.forme = t.value; break;
@@ -908,7 +981,7 @@ modal.addEventListener('change', e => {
     case 'cv': R.si[k].v = t.value; break;
     default: return;
   }
-  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond'));
+  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond') || (a === 'et' && ['couleur', 'contenu', 'bord'].includes(t.dataset.f)));
 });
 modal.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.regle') && cfg.regles[+d.dataset.r]) cfg.regles[+d.dataset.r].o = d.open; }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.classList.remove('ouvert'); });
