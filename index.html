@@ -19,7 +19,7 @@
 
 <style>
   :root { --ink:#1d2733; --muted:#5d6b7a; --paper:#fff; --line:#dde3ea; --accent:#1f4e8c; }
-  html, body { height:100%; margin:0; font-family:system-ui,"Segoe UI",Roboto,sans-serif; color:var(--ink); }
+  html, body { height:100%; margin:0; font-family:var(--police, system-ui, "Segoe UI", Roboto, sans-serif); color:var(--ink); }
   #map { height:100%; width:100%; }
   #msg { position:absolute; inset:0; z-index:1000; display:none; align-items:center; justify-content:center;
          background:rgba(255,255,255,.95); padding:24px; text-align:center; line-height:1.5; font-size:15px; }
@@ -260,15 +260,19 @@
   details.regle.el > summary::before { content:none !important; } .gear { color:var(--muted); font-size:16px; flex:none; line-height:1; } details.regle.el[open] .gear { color:var(--accent); }
   details.regle.el > summary .gear { margin-left:auto; } details.regle.el > summary .rg-nom { flex:0 1 auto; }
   .cpt-main { font-weight:700; margin-top:6px; }
+  .lie-bilan { font-size:12px; color:var(--muted); background:#f6f8fb; border-radius:8px; padding:8px 10px; margin-top:10px; line-height:1.55; overflow-wrap:anywhere; } .lie-bilan.ok { color:#18753c; } .lie-bilan.ko { color:#b34000; } .sec-desc { margin:0; padding:6px 12px 2px; font-size:12.5px; color:var(--muted); }
+  .mini th { white-space:normal; } .mini th, .mini td { padding:4px 8px; overflow-wrap:normal; word-break:normal; } .mini th { font-size:var(--th, inherit); } .mini:not(.ligne) { width:100%; } .mini td.nw { white-space:nowrap; } .mini.ligne th, .mini.ligne td { white-space:nowrap; } .mini-wrap { padding:0 6px 8px; } table.mini { font-size:calc(var(--fs-fiche, 14px) - 1px); }
+  .fp-corps details.sub { border:1px solid var(--line); border-radius:8px; margin:6px 8px; } details.sub > summary { font-size:13px; padding:6px 10px; }
+  details.regle.el { margin-top:6px; }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div id="msg"></div>
-<aside id="fiche-panel" aria-label="Fiche de l’établissement" aria-hidden="true"></aside>
+<aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '39';
+const VERSION = '55';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -279,11 +283,9 @@ function etiquetteHtml(st, e, vals) {   // pastille devant un nom : identique au
   let t = st.contenu; if (e.contenu === 'rien') t = ''; else if (e.contenu === 'texte') t = e.texte; else if (e.contenu === 'colonne' && vals && e.col) t = String(fmt(e.col, vals[e.col]) ?? '').slice(0, 6);
   return pastille(f, c, t, bc, be, e.taille);
 }
-const STYLES = { '':'Valeur normale', 'b':'Valeur en gras', 'i':'Valeur en italique', 'badge':'Valeur en pastille' };
 const OPS = [['=','est égal à'],['≠','est différent de'],['contient','contient'],['>','est supérieur à'],['<','est inférieur à'],['vide','est vide'],['rempli','n’est pas vide']];
 const DEFAUT = { couleur:'#1f4e8c', forme:'rond', bordc:'#ffffff', borde:3 };
 const POLICES = { 'Système (par défaut)':'system-ui,"Segoe UI",Roboto,sans-serif', 'Marianne':'Marianne,Arial,sans-serif', 'Arial':'Arial,Helvetica,sans-serif', 'Verdana':'Verdana,Geneva,sans-serif', 'Georgia':'Georgia,serif', 'Trebuchet MS':'"Trebuchet MS",Helvetica,sans-serif' };
-const LISTE_MODES = ['Forme et couleur du point', 'Pastille de couleur', 'Emoji ou texte du point', 'Valeur d’une colonne', 'Rien'];
 const POS_COMMUNE = ['Haut à droite', 'Haut au centre', 'Haut à gauche', 'Bas à droite', 'Bas au centre', 'Bas à gauche', 'Dans le panneau de gauche'];
 
 const geopf = (l, f) => `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=${f}&LAYER=${l}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`;
@@ -319,9 +321,9 @@ const nRegle = r => {
     bulle:{ t:bt === 'signal' ? '' : bt, src:b.src || '', e:b.e || '', c:b.c || '', couleur:hc(b.couleur) },
     pulse:{ on:pu.on === true, couleur:hc(pu.couleur), rythme:['lent', 'normal', 'rapide'].includes(pu.rythme) ? pu.rythme : 'normal' } };
 };
-const ELTS_GAUCHE = { commune:'Recherche de commune (si placée dans le panneau)', q:'Recherche par nom', filtres:'Filtres', compteurs:'Compteurs', count:'Nombre d’établissements affichés', version:'Numéro de version', liste:'Liste des établissements', tout:'Bouton « Voir tous les points »', iti:'Bouton « Préparer un itinéraire »', prog:'Bouton « Voir la progression »', legende:'Légende' };
+const ELTS_GAUCHE = { commune:'Recherche de commune (si placée dans le panneau)', q:'Recherche par nom', filtres:'Filtres', compteurs:'Compteurs', count:'Nombre de points affichés', version:'Numéro de version', liste:'Liste des points', tout:'Bouton « Voir tous les points »', iti:'Bouton « Préparer un itinéraire »', prog:'Bouton « Voir la progression »', legende:'Légende' };
 const normOrdre = o => { const a = (Array.isArray(o) ? o : []).filter((k, i, t) => ELTS_GAUCHE[k] && t.indexOf(k) === i); Object.keys(ELTS_GAUCHE).forEach(k => { if (!a.includes(k)) a.push(k); }); return a; };
-const LIB = { q:['lib_q', 'Rechercher un nom…'], liste:['lib_liste', 'Afficher la liste des établissements'], tout:['lib_tout', 'Voir tous les points'], iti:['lib_iti', 'Préparer un itinéraire'], prog:['lib_prog', 'Voir la progression'], legende:['lib_legende', 'Légende'], version:['lib_version', 'version'], filtres:['filtres_titre', 'Filtres'], compteurs:['lib_compteurs', ''], count:['lib_count', '{n} sur {total} établissement{s}'], commune:['lib_commune', 'Aller à une commune…'] };
+const LIB = { q:['lib_q', 'Rechercher un nom…'], liste:['lib_liste', 'Afficher la liste des points'], tout:['lib_tout', 'Voir tous les points'], iti:['lib_iti', 'Préparer un itinéraire'], prog:['lib_prog', 'Voir la progression'], legende:['lib_legende', 'Légende'], version:['lib_version', 'version'], filtres:['filtres_titre', 'Filtres'], compteurs:['lib_compteurs', ''], count:['lib_count', '{n} sur {total} point{s}'], commune:['lib_commune', 'Aller à une commune…'] };
 const hex = c => /^#[0-9a-f]{6}$/i.test(c || '') ? c : '';
 const nEnt = h => { h = h || {}; return { titre:h.titre || '', sous:h.sous || '', etiq:h.etiq !== false, fond:['neutre', 'point', 'perso'].includes(h.fond) ? h.fond : 'neutre', fondc:hex(h.fondc) || '#f6f8fb', txtc:hex(h.txtc), taille:+h.taille || 0 }; };
 const nDef = d => { d = d || {}; return { couleur:hex(d.couleur) || DEFAUT.couleur, forme:FORMES.includes(d.forme) ? d.forme : DEFAUT.forme, bordc:hex(d.bordc) || DEFAUT.bordc, borde:(d.borde === undefined || d.borde === null || isNaN(+d.borde)) ? DEFAUT.borde : Math.max(0, Math.min(8, +d.borde)) }; };
@@ -338,11 +340,13 @@ const nBarre = b => {
 const nEtq = e => { e = e || {}; return { forme:['point', 'rond', 'goutte', 'carre', 'losange', 'triangle', 'aucune'].includes(e.forme) ? e.forme : 'point', couleur:e.couleur === 'fixe' ? 'fixe' : 'point', coul:hex(e.coul) || '#1f4e8c',
   contenu:['point', 'rien', 'texte', 'colonne'].includes(e.contenu) ? e.contenu : 'point', texte:String(e.texte || ''), col:String(e.col || ''), taille:Math.max(12, Math.min(44, +e.taille || 22)), bord:e.bord === 'perso' ? 'perso' : 'point', bordc:hex(e.bordc) || '#ffffff', borde:Math.max(0, Math.min(8, e.borde === undefined ? 2 : (+e.borde || 0))) }; };
 const egalTxt = (a, b) => sansAccent(a ?? '').trim() === sansAccent(b ?? '').trim();
-const STYLES_TXT = { titre:['Titre « Filtres »', '#filtres-titre'], filtre:['Noms des filtres', '#filtres details.flt-d > summary, #filtres label.flt, #filtres .flt-btn'], valeurs:['Valeurs dans les filtres', '#filtres .liste label'], compteurs:['Compteurs', '#compteurs'], count:['Nombre d’établissements affichés', '#count'], version:['Numéro de version', '#b-version'],
-  bt_liste:['Bouton de la liste des établissements', '#liste-btn'], bt_tout:['Bouton « Voir tous les points »', '#tout'], bt_iti:['Bouton « Préparer un itinéraire »', '#iti-btn'], bt_prog:['Bouton « Voir la progression »', '#prog-btn'], liste:['Noms dans la liste des établissements', '#liste button'], legende:['Légende', '#legende, #legende button'] };
+const STYLES_TXT = { titre:['Titre « Filtres »', '#filtres-titre'], filtre:['Noms des filtres', '#filtres details.flt-d > summary, #filtres label.flt, #filtres .flt-btn'], valeurs:['Valeurs dans les filtres', '#filtres .liste label'], compteurs:['Compteurs', '#compteurs'], count:['Nombre de points affichés', '#count'], version:['Numéro de version', '#b-version'],
+  bt_liste:['Bouton de la liste des points', '#liste-btn'], bt_tout:['Bouton « Voir tous les points »', '#tout'], bt_iti:['Bouton « Préparer un itinéraire »', '#iti-btn'], bt_prog:['Bouton « Voir la progression »', '#prog-btn'], liste:['Noms dans la liste des points', '#liste button'], legende:['Légende', '#legende, #legende button'] };
 const ELT_STYLES = { filtres:['titre'], compteurs:['compteurs'], count:['count'], version:['version'], liste:['bt_liste', 'liste'], tout:['bt_tout'], iti:['bt_iti'], prog:['bt_prog'], legende:['legende'] };
-const nTab = t => { t = t || {}; const heads = (t.heads || []).map(String); return { heads, vides:t.vides !== false, rows:(t.rows || []).map(r => ({ cells:heads.map((h, j) => { const x = ((r && r.cells) || [])[j] || {}; return { c:String(x.c || ''), v:String(x.v || '') }; }) })) }; };
-const nSec = s => ({ o:!!(s && s.o), nom:(s && s.nom) || '', cols:((s && s.cols) || []).map(nEntree), type:(s && s.type === 'tableau') ? 'tableau' : 'liste', tab:nTab(s && s.tab) });
+const nTab = t => { t = t || {}; const taille = Math.max(0, Math.min(30, +t.taille || 0)); const heads = (t.heads || []).map(String); return { heads, taille, tailleTh:Math.max(0, Math.min(30, +t.tailleTh || 0)), larg:(t.larg === 'ligne' || t.larg === 'contenu') ? 'ligne' : 'auto', vides:t.vides !== false, rows:(t.rows || []).map(r => ({ cells:heads.map((h, j) => { const x = ((r && r.cells) || [])[j] || {}; return { c:String(x.c || ''), v:String(x.v || '') }; }) })) }; };
+const nLie = l => { l = l || {}; return { table:String(l.table || ''), cle:String(l.cle || ''), cle2:String(l.cle2 || ''), dateCol:String(l.dateCol || ''), mode:['toutes', 'courante', 'precedente', 'fixe'].includes(l.mode) ? l.mode : 'toutes', annee:Math.max(0, Math.min(2200, +l.annee || 0)),
+  cols:(l.cols || []).map(x => ({ c:String((x && x.c) || ''), nom:String((x && x.nom) || '') })), triCol:String(l.triCol || ''), triDir:l.triDir === 'asc' ? 'asc' : 'desc', max:Math.max(0, Math.min(200, +l.max || 0)), afficherVide:l.afficherVide !== false, taille:Math.max(0, Math.min(30, +l.taille || 0)), tailleTh:Math.max(0, Math.min(30, +l.tailleTh || 0)), larg:(l.larg === 'ligne' || l.larg === 'contenu') ? 'ligne' : 'auto', gs:l.gs === true, videTxt:String(l.videTxt || ''), grp:String(l.grp || ''), grpDir:l.grpDir === 'asc' ? 'asc' : 'desc', grpHide:l.grpHide !== false, sousOuvert:['premiere', 'toutes', 'aucune'].includes(l.sousOuvert) ? l.sousOuvert : 'premiere' }; };
+const nSec = s => ({ o:!!(s && s.o), nom:(s && s.nom) || '', desc:String((s && s.desc) || ''), cols:((s && s.cols) || []).map(nEntree), type:(s && ['tableau', 'lie'].includes(s.type)) ? s.type : 'liste', tab:nTab(s && s.tab), lie:nLie(s && s.lie) });
 const nMsg = m => { m = m || {}; const d = x => /^\d{4}-\d{2}-\d{2}$/.test(x || '') ? x : ''; return { o:m.o === true, actif:m.actif !== false, texte:String(m.texte || ''), ico:String(m.ico || ''), style:['info', 'attention', 'urgent', 'perso'].includes(m.style) ? m.style : 'info', fond:hex(m.fond) || '#1f4e8c', coul:hex(m.coul) || '#ffffff', pos:m.pos === 'bas' ? 'bas' : 'haut', duree:Math.max(0, Math.min(600, +m.duree || 0)), rep:['ouverture', 'session', 'intervalle'].includes(m.rep) ? m.rep : 'ouverture', min:Math.max(1, Math.min(240, +m.min || 10)), debut:d(m.debut), fin:d(m.fin) }; };
 const nRech = r => { r = r || {}; return { info:String(r.info || ''), nom:r.nom !== false, mode:r.mode === 'choix' ? 'choix' : 'toutes', cols:(r.cols || []).map(x => ({ c:String((x && x.c) || ''), nom:String((x && x.nom) || '') })) }; };
 const nSt = x => { x = x || {}; return { coul:hex(x.coul), fond:hex(x.fond), taille:Math.max(0, Math.min(40, +x.taille || 0)), gras:!!x.gras, ital:!!x.ital }; };
@@ -360,7 +364,7 @@ const nInd = i => {
 const nProg = p => { p = p || {}; return { inds:(p.inds || []).map(nInd), tri:['nom', 'asc', 'desc'].includes(p.tri) ? p.tri : 'nom', suivre:p.suivre !== false, clic:p.clic !== false }; };
 const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(nSec), regles:(c.regles || []).map(nRegle), defaut:nDef(c.defaut), entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, ordre:normOrdre(c.ordre), barre:nBarre(c.barre), messages:(c.messages || []).map(nMsg), recherche:nRech(c.recherche), styles:Object.fromEntries(Object.keys(STYLES_TXT).map(k => [k, nSt((c.styles || {})[k] || (k.startsWith('bt_') ? (c.styles || {}).boutons : null))])), filtres:(c.filtres || []).map(nFiltre), prog:nProg(c.prog), etiquettes:{ liste:nEtq((c.etiquettes || {}).liste), legende:nEtq((c.etiquettes || {}).legende) } }; };
 let opts = {}, cfg = norm(), lastRec = null, lastMap = null, labels = {}, types = {}, allCols = [], donnees = new Map(), tid = null, erreurAcces = '', labelsCharges = false, labelsT = {}, typesT = {}, visT = {}, refTabs = {}, lieeOuverte = false;
-let recherche = '', premierChargement = true, idSelectionne = null, ficheId = null, sansGps = 0, regroupPrec = true, optionsChargees = false, rechChamp = '', progFocus = null, sugIdx = -1, sugList = [], msgTimers = [], msgFile = [], msgCourant = null, msgSig = '', msgFin = null, aideT = null, sigFiltres = '', sigFiltresDef = '', etatFiltres = new Map(), filtresSecOuvert = true, sigStyles = '', filtresDefs = [], listeOuverte = false, cptCols = [], sigAff = '', legOuverte = true, legCats = [];
+let recherche = '', premierChargement = true, idSelectionne = null, ficheId = null, sansGps = 0, regroupPrec = true, sigOpts = '', attente = null, optionsChargees = false, rechChamp = '', progFocus = null, sugIdx = -1, sugList = [], msgTimers = [], msgFile = [], msgCourant = null, msgSig = '', msgFin = null, aideT = null, sigFiltres = '', sigFiltresDef = '', etatFiltres = new Map(), filtresSecOuvert = true, sigStyles = '', filtresDefs = [], listeOuverte = false, cptCols = [], sigAff = '', legOuverte = true, legCats = [];
 const marqueurs = new Map(), masques = new Set(), filtreSel = {}, etatSections = new Map();
 const optBrut = (n, d) => (opts[n] === undefined || opts[n] === null) ? d : opts[n];   // une valeur vide enregistrée est conservée (titre ou texte volontairement vide)
 const opt = (n, d) => (opts[n] === undefined || opts[n] === null || opts[n] === '') ? d : opts[n];
@@ -374,8 +378,10 @@ function nomRef(tn, c, id) {
 function fmtG(tn, c, v) {   // formatage selon le type réel de la colonne ; les colonnes « Référence » affichent la valeur de la fiche liée
   const t = (typesT[tn] || {})[c] || '';
   if (refDe(t)) { const ids = (Array.isArray(v) ? v.filter(x => x !== 'L') : [v]).filter(x => x > 0); return ids.length ? ids.map(i => nomRef(tn, c, i)).join(', ') : null; }
-  if (typeof v === 'number' && t === 'Date') return new Date(v * 1000).toLocaleDateString('fr-FR', { timeZone:'UTC' });
+  const wo = gsOn() ? ((stylesT[tn] || {})[c] || {}).wo || {} : {};   // format défini dans Grist (si l'option est cochée)
+  if (typeof v === 'number' && t === 'Date') return wo.dateFormat ? fmtDate(v * 1000, wo.dateFormat) : new Date(v * 1000).toLocaleDateString('fr-FR', { timeZone:'UTC' });
   if (typeof v === 'number' && t.startsWith('DateTime')) return new Date(v * 1000).toLocaleString('fr-FR');
+  if (typeof v === 'number' && wo.numMode) { const f = fmtNum(v, wo); if (f !== null) return f; }
   return formater(c, v);
 }
 const fmt = (c, v) => fmtG(tid, c, v);
@@ -507,20 +513,20 @@ function montrer(m, cb) { if (cluster.zoomToShowLayer) montrer(m, cb); else { ma
 const haut = L.control({ position:'topleft' });
 haut.onAdd = () => {
   const d = L.DomUtil.create('div', 'panel gauche');
-  d.innerHTML = `<button class="link" id="reduire" type="button" aria-expanded="true" style="order:-1">▴ Réduire le panneau</button><div id="commune-zone"></div><div id="b-q" class="b-q"><input type="search" id="q" placeholder="Rechercher un nom…" aria-label="Rechercher un établissement"><select id="q-champ" aria-label="Rechercher dans" style="display:none"></select><div id="q-sug" class="sug" role="listbox" style="display:none"></div></div>
+  d.innerHTML = `<button class="link" id="reduire" type="button" aria-expanded="true" style="order:-1">▴ Réduire le panneau</button><div id="commune-zone"></div><div id="b-q" class="b-q"><input type="search" id="q" placeholder="Rechercher un nom…" aria-label="Rechercher un point"><select id="q-champ" aria-label="Rechercher dans" style="display:none"></select><div id="q-sug" class="sug" role="listbox" style="display:none"></div></div>
     <div id="filtres"></div><div id="compteurs"></div><div class="count" id="count"></div><div id="b-version"><small class="ver"></small></div>
-    <div id="b-liste"><button class="link" id="liste-btn" type="button" aria-expanded="false">Afficher la liste des établissements</button><div id="liste" style="display:none"></div></div>
+    <div id="b-liste"><button class="link" id="liste-btn" type="button" aria-expanded="false">Afficher la liste des points</button><div id="liste" style="display:none"></div></div>
     <button class="link" id="tout" type="button">Voir tous les points</button><button class="link" id="iti-btn" type="button">🧭 Préparer un itinéraire</button><button class="link" id="prog-btn" type="button">📊 Voir la progression</button><div class="legend" id="legende"></div><div id="cfg-secours"></div>`;
   L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
   d.querySelector('#q').addEventListener('input', e => { recherche = sansAccent(e.target.value.trim()); sugIdx = -1; appliquerFiltres(); majSug(); });
   d.querySelector('#q').addEventListener('keydown', e => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (!sugList.length) return; e.preventDefault(); sugIdx = Math.max(0, Math.min(sugList.length - 1, sugIdx + (e.key === 'ArrowDown' ? 1 : -1))); majSug(); }
-    else if (e.key === 'Enter') { if (sugIdx >= 0 && sugList[sugIdx] !== undefined) { e.preventDefault(); const id = sugList[sugIdx]; cacherSug(); allerA(id); } else cacherSug(); }
+    else if (e.key === 'Enter') { if (sugIdx >= 0 && sugList[sugIdx] !== undefined) { e.preventDefault(); choisirSug(sugList[sugIdx]); } else cacherSug(); }
     else if (e.key === 'Escape') cacherSug();
   });
   d.querySelector('#q-sug').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.classList.contains('sug-tous')) { cacherSug(); recentrer(); } else if (b.dataset.id) { cacherSug(); allerA(Number(b.dataset.id)); }
+    if (b.classList.contains('sug-tous')) { cacherSug(); recentrer(); } else if (b.dataset.id) { choisirSug(Number(b.dataset.id)); }
   });
   d.querySelector('#q-champ').addEventListener('change', e => { rechChamp = e.target.value; appliquerFiltres(); });
   d.querySelector('#tout').addEventListener('click', recentrer);
@@ -555,8 +561,13 @@ haut.onAdd = () => {
 };
 haut.addTo(map);
 
+function choisirSug(id) {   // remplit la barre de recherche avec le nom choisi, puis va sur l'établissement
+  const m = marqueurs.get(id), q = document.getElementById('q');
+  if (m && q && cfg.recherche.nom) { q.value = m._cifi.nom || ''; recherche = sansAccent(String(q.value).trim()); rechChamp = ''; appliquerFiltres(); }
+  cacherSug(); allerA(id);
+}
 function allerA(id) {
-  const m = marqueurs.get(id); if (!m || !cluster.hasLayer(m)) return;
+  const m = marqueurs.get(id); if (!m) return; if (!cluster.hasLayer(m)) { map.setView(m.getLatLng(), Math.max(map.getZoom(), 16)); return; }
   grist.setSelectedRows([id]);
   montrer(m, () => { map.panTo(m.getLatLng()); m.openPopup(); });
 }
@@ -570,7 +581,7 @@ function majLegende() {
 function setListe(ouvert) {
   const b = document.getElementById('liste-btn'), l = document.getElementById('liste'); if (!b || !l) return;
   listeOuverte = ouvert; b.setAttribute('aria-expanded', String(ouvert));
-  { const ic = ouvert ? opt('ico_liste2', '') : opt('ico_liste', ''); b.textContent = (ic ? ic + ' ' : '') + (ouvert ? opt('lib_liste2', 'Masquer la liste des établissements') : opt('lib_liste', LIB.liste[1])); }
+  { const ic = ouvert ? opt('ico_liste2', '') : opt('ico_liste', ''); b.textContent = (ic ? ic + ' ' : '') + (ouvert ? opt('lib_liste2', 'Masquer la liste des points') : opt('lib_liste', LIB.liste[1])); }
   l.style.display = ouvert ? 'block' : 'none'; majListe();
 }
 function rechIndex(vals, nom) { const o = { __nom:sansAccent(nom ?? '') }; cfg.recherche.cols.forEach(x => { if (x.c) o['c:' + x.c] = sansAccent(fmt(x.c, vals[x.c]) ?? ''); }); return o; }
@@ -621,7 +632,7 @@ function devant(d) { return etiquetteHtml(d.style, cfg.etiquettes.liste, d.vals)
 function majListe() {
   if (!listeOuverte) return;
   const l = [...marqueurs.values()].filter(m => cluster.hasLayer(m)).sort((a, b) => String(a._cifi.nom).localeCompare(String(b._cifi.nom), 'fr')).slice(0, 5000);
-  document.getElementById('liste').innerHTML = l.length ? l.map(m => `<button type="button" data-id="${Number(m._cifi.id)}">${devant(m._cifi)}${esc(m._cifi.nom || 'Sans nom')}</button>`).join('') : '<p class="vide" style="margin:8px">Aucun établissement.</p>';
+  document.getElementById('liste').innerHTML = l.length ? l.map(m => `<button type="button" data-id="${Number(m._cifi.id)}">${devant(m._cifi)}${esc(m._cifi.nom || 'Sans nom')}</button>`).join('') : '<p class="vide" style="margin:8px">Aucun point.</p>';
 }
 const fs = f => { const a = (coul(f.coul) ? `color:${coul(f.coul)};` : '') + (coul(f.fond) ? `background:${coul(f.fond)};padding:2px 8px;border-radius:8px;width:fit-content;` : '') + (f.gras ? 'font-weight:700;' : '') + (f.ital ? 'font-style:italic;' : ''); return (a ? ` style="${a}"` : '') + (f.aide ? ` data-aide="${esc(f.aide)}"` : ''); };
 function filtreHtml(f) {
@@ -653,7 +664,7 @@ function appliquerFiltres() {
   }
   document.getElementById('compteurs').innerHTML = (opt('lib_compteurs', '') ? `<div class="cpt-main">${esc(opt('lib_compteurs', ''))}</div>` : '') + cnt.map(([c, mp]) => `<div class="cpt-t">${esc(libel(c))}</div>` +
     [...mp].sort((a, b) => b[1] - a[1]).map(([v, k]) => `<div><strong>${k}</strong> ${esc(v)}</div>`).join('')).join('');
-  document.getElementById('count').innerHTML = esc(opt('lib_count', '{n} sur {total} établissement{s}')).replace(/\{n\}/g, `<strong>${n}</strong>`).replace(/\{total\}/g, marqueurs.size).replace(/\{s\}/g, marqueurs.size > 1 ? 's' : '') + (sansGps ? `<br>${sansGps} sans coordonnées valides` : '') + (progFocus ? `<br><button type="button" class="link" id="prog-x">✕ Carte limitée à « ${esc(progFocus.v)} » (retirer)</button>` : '') ;
+  document.getElementById('count').innerHTML = esc(opt('lib_count', '{n} sur {total} point{s}')).replace(/\{n\}/g, `<strong>${n}</strong>`).replace(/\{total\}/g, marqueurs.size).replace(/\{s\}/g, marqueurs.size > 1 ? 's' : '') + (sansGps ? `<br>${sansGps} sans coordonnées valides` : '') + (progFocus ? `<br><button type="button" class="link" id="prog-x">✕ Carte limitée à « ${esc(progFocus.v)} » (retirer)</button>` : '') ;
   majListe(); if (progOuvert) progDessiner();
 }
 function icone(d, sel) {
@@ -675,8 +686,8 @@ const lignes = l => `<dl>${l.map(([k, v, x]) => { x = x || {};
   const tl = TAILLES[x.ta] ? `font-size:${TAILLES[x.ta]};` : '', sd = tl + (coul(x.cn) ? `color:${coul(x.cn)};` : ''), sv = tl + (coul(x.cw) ? `color:${coul(x.cw)};` : ''),
     cn = [x.gn && 'b', x.gi && 'i'].filter(Boolean).join(' '), cv = [x.vg && 'b', x.vi && 'i'].filter(Boolean).join(' ');
   const val = x.ref ? x.ref.ids.map((id, i) => `<a class="ref" href="#" data-t="${esc(x.ref.t)}" data-id="${id}" data-n="${esc(x.ref.noms[i])}">${esc(x.ref.noms[i])}<span class="ref-ico" aria-hidden="true">↗</span></a>`).join(', ') : x.vb ? `<span class="badge">${esc(v)}</span>` : esc(v);
-  return `<dt${cn ? ` class="${cn}"` : ''}${sd ? ` style="${sd}"` : ''}>${esc(k)}</dt><dd${cv ? ` class="${cv}"` : ''}${sv ? ` style="${sv}"` : ''}>${val}</dd>`; }).join('')}</dl>`;
-const champsDe = (liste, vals) => liste.map(x => [(x.nom || '').trim() || libel(x.c), fmt(x.c, vals[x.c]), { ...x, ref:refInfo(x.c, vals[x.c]) }]).filter(a => a[1] !== null);
+  return `<dt${cn ? ` class="${cn}"` : ''}${sd ? ` style="${sd}"` : ''}>${esc(k)}</dt><dd${cv ? ` class="${cv}"` : ''}${sv ? ` style="${sv}"` : ''}>${x.gs && cssG(x.gs) ? `<span style="${cssG(x.gs)}">${val}</span>` : val}</dd>`; }).join('')}</dl>`;
+const champsDe = (liste, vals) => liste.map(x => [(x.nom || '').trim() || libel(x.c), fmt(x.c, vals[x.c]), { ...x, ref:refInfo(x.c, vals[x.c]), gs:gsOn() ? styleGrist(tid, x.c, vals[x.c], vals) : null }]).filter(a => a[1] !== null);
 const etiquette = d => d.style.cat >= 0 ? `<span class="niv" style="background:${d.style.couleur};color:${sombre(d.style.couleur) ? '#1d2733' : '#fff'}">${esc(nomRegle(cfg.regles[d.style.cat]))}</span>` : '';
 function enteteDe(d, k) {
   const h = cfg.entetes[k], tc = h.titre ? fmt(h.titre, d.vals[h.titre]) : null, sous = h.sous ? fmt(h.sous, d.vals[h.sous]) : null;
@@ -689,22 +700,94 @@ function fichier(d) {
     <div class="corps">${cfg.popup.length ? lignes(champsDe(cfg.popup, d.vals)) : '<p style="padding:10px 14px;margin:0;color:var(--muted);font-size:13px">Choisissez les colonnes du popup dans « Configurer le widget ».</p>'}</div>
     <div class="pied"><button type="button" class="btn-fiche" data-id="${Number(d.id)}">Voir la fiche complète</button> <button type="button" class="btn-iti" data-id="${Number(d.id)}" style="background:#fff;color:var(--accent);border:1px solid var(--accent)">＋ Itinéraire</button></div></div>`;
 }
-function sectionDonnees(sec, vals) {   // section « liste de colonnes » ou « mini tableau »
+let gsForce = false;   // vrai pendant l'affichage d'un tableau lié qui reprend le style de Grist
+const gsOn = () => gsForce || opt('style_grist', false) === true;
+const stylesT = {};   // style des colonnes de Grist : options (couleurs, gras…) et colonnes d'aide des règles conditionnelles
+const cssG = (st, cell) => !st ? '' : [/^#[0-9a-f]{6}$/i.test(st.textColor || '') && `color:${st.textColor}`, /^#[0-9a-f]{6}$/i.test(st.fillColor || '') && `background:${st.fillColor}${cell ? '' : ';padding:1px 6px;border-radius:6px'}`, st.fontBold && 'font-weight:700', st.fontItalic && 'font-style:italic',
+  (st.fontUnderline || st.fontStrikethrough) && `text-decoration:${[st.fontUnderline && 'underline', st.fontStrikethrough && 'line-through'].filter(Boolean).join(' ')}`, ['left', 'center', 'right'].includes(st.alignment) && `text-align:${st.alignment}`].filter(Boolean).join(';');
+function styleGrist(tn, c, v, row) {   // colonne, valeur de liste de choix, puis première règle conditionnelle qui s'applique
+  const m = (stylesT[tn] || {})[c]; if (!m) return null; const wo = m.wo || {}, st = { ...wo };
+  if (wo.choiceOptions && v != null) [].concat(Array.isArray(v) ? v.filter(x => x !== 'L') : v).forEach(x => Object.assign(st, wo.choiceOptions[String(x)] || {}));
+  const ro = wo.rulesOptions || []; for (let j = 0; j < (m.regles || []).length; j++) if (row && row[m.regles[j]] && ro[j]) { Object.assign(st, ro[j]); break; }
+  return st;
+}
+const gsT = (tn, c, r) => { const x = gsOn() ? cssG(styleGrist(tn, c, r[c], r), true) : ''; return x ? ` style="${x}"` : ''; };
+const fmtDate = (ms, f) => { const d = new Date(ms), p = n => String(n).padStart(2, '0'), mois = o => d.toLocaleDateString('fr-FR', { month:o, timeZone:'UTC' }), T = { YYYY:d.getUTCFullYear(), YY:p(d.getUTCFullYear() % 100), MMMM:mois('long'), MMM:mois('short'), MM:p(d.getUTCMonth() + 1), M:d.getUTCMonth() + 1, DD:p(d.getUTCDate()), D:d.getUTCDate() }; return f.replace(/YYYY|YY|MMMM|MMM|MM|M|DD|D/g, k => T[k]); };
+const fmtNum = (v, wo) => { try { const o = wo.numMode === 'currency' ? { style:'currency', currency:wo.currency || 'EUR' } : wo.numMode === 'percent' ? { style:'percent' } : {}; if (wo.decimals != null) o.minimumFractionDigits = wo.decimals; if (wo.maxDecimals != null) o.maximumFractionDigits = wo.maxDecimals; return v.toLocaleString('fr-FR', o); } catch (e) { return null; } };
+const refEchec = {};   // tables liées illisibles : motif renvoyé par Grist
+const nk = v => { const t = String(v ?? '').trim(), c = t.replace(/\s+/g, ''); return /^\d+$/.test(c) ? c.replace(/^0+(?=\d)/, '') : t; };   // identifiants numériques : espaces et zéros initiaux ignorés
+const tablesLiees = () => [...new Set(cfg.sections.filter(x => x.type === 'lie' && x.lie.table).map(x => x.lie.table))];
+const libelT = (tn, c) => (labelsT[tn] || {})[c] || joli(c);
+const colsDe = tn => Object.keys(labelsT[tn] || {}).filter(c => c !== 'id' && c !== 'manualSort' && !c.startsWith('gristHelper_'));
+const tablesDispo = () => Object.keys(labelsT).filter(t => t !== tid && !t.startsWith('_') && !t.includes('_summary_'));
+function anneeDe(tn, c, v) {
+  const t = (typesT[tn] || {})[c] || '';
+  if (typeof v === 'number' && (t === 'Date' || t.startsWith('DateTime'))) return new Date(v * 1000).getUTCFullYear();
+  if (v instanceof Date) return v.getUTCFullYear();
+  const m = /\b(19|20)\d{2}\b/.exec(String(v ?? '')); return m ? +m[0] : null;
+}
+function cleLiee(tn, L, row, M) { if (refDe((typesT[tn] || {})[L])) return M ? String(fmtG(tn, L, row[L]) ?? '').trim() : String(row[L]); return String(row[L] ?? '').trim(); }
+const anneeCible = L => L.mode === 'courante' ? new Date().getFullYear() : L.mode === 'precedente' ? new Date().getFullYear() - 1 : L.mode === 'fixe' ? (L.annee || new Date().getFullYear()) : null;
+const periodeTxt = L => { const a = anneeCible(L); return a ? (L.mode === 'courante' ? 'l’année en cours (' + a + ')' : L.mode === 'precedente' ? 'l’année précédente (' + a + ')' : String(a)) : ''; };
+function diagLie(sec, d) {   // explique pourquoi un tableau lié est vide : lien introuvable, ou lignes seulement sur d'autres périodes
+  const L = sec.lie, tab = refTabs[L.table], cleP = nk(L.cle2 ? d.vals[L.cle2] : d.id), annees = new Set(); let cle = 0;
+  tab.forEach(row => { if (cleP && nk(cleLiee(L.table, L.cle, row, L.cle2)) === cleP) { cle++; const a = L.dateCol ? anneeDe(L.table, L.dateCol, row[L.dateCol]) : null; if (a) annees.add(a); } });
+  return { total:tab.size, cle, cleP:String(cleP), annees:[...annees].sort() };
+}
+function ligneLiees(sec, d) {   // lignes de l'autre table qui concernent cet établissement, sur la période choisie
+  const L = sec.lie, tab = refTabs[L.table]; if (!tab || !L.cle) return [];
+  const cleP = nk(L.cle2 ? d.vals[L.cle2] : d.id); if (!cleP) return [];
+  const an = anneeCible(L), rows = [];
+  tab.forEach(row => { if (nk(cleLiee(L.table, L.cle, row, L.cle2)) !== cleP) return; if (an && L.dateCol && anneeDe(L.table, L.dateCol, row[L.dateCol]) !== an) return; rows.push(row); });
+  const tc = L.triCol || L.dateCol; if (tc) { const sg = L.triDir === 'asc' ? 1 : -1; rows.sort((a, b) => { const x = a[tc], y = b[tc]; return sg * ((typeof x === 'number' && typeof y === 'number') ? x - y : String(x ?? '').localeCompare(String(y ?? ''), 'fr')); }); }
+  return L.max ? rows.slice(0, L.max) : rows;
+}
+const largeurs = (heads, m) => heads.map((h, j) => {   // colonne courte : une seule ligne, largeur de son contenu ; colonne de texte long : reçoit la place restante
+  const v = m.map(r => String(r[j] ?? '')), tot = Math.max(0, ...v.map(x => x.length)), mot = Math.max(...[String(h), ...v].map(x => Math.max(0, ...x.split(/\s+/).map(y => y.length))));
+  return tot <= 16 ? { nw:true, w:(Math.max(tot, mot) + 2) + 'ch' } : { nw:false, w:'' };
+});
+const tabHtml = (o, heads, rows, w) => { const st = [o.taille && `font-size:${o.taille}px`, o.tailleTh && `--th:${o.tailleTh}px`].filter(Boolean).join(';'), a = o.larg === 'auto';
+  return `<div class="mini-wrap"><table class="mini${a ? '' : ' ligne'}"${st ? ` style="${st}"` : ''}>${a ? `<colgroup>${w.map(c => `<col${c.w ? ` style="width:${c.w}"` : ''}>`).join('')}</colgroup>` : ''}<thead><tr>${heads.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((x, j) => `<td${x.s || ''}${a && w[j].nw ? ' class="nw"' : ''}>${esc(x.v ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`; };
+function sectionDonnees(sec, vals, d, i) {   // section « liste de colonnes », « mini tableau » ou « tableau lié »
+  if (sec.type === 'lie') {
+    const L = sec.lie, cols = L.cols.filter(x => x.c), msg = t => ({ n:0, force:true, html:`<p class="vide" style="padding:6px 12px 10px;margin:0;font-size:13px">${t}</p>` });
+    if (!L.table || !L.cle || !cols.length) return msg('Tableau lié incomplet : choisissez la table, la colonne de lien et au moins une colonne (onglet Fiche de la configuration).');
+    if (!refTabs[L.table]) return msg(refEchec[L.table] ? `Impossible de lire la table « ${esc(joli(L.table))} » : ${esc(refEchec[L.table])}` : 'Chargement…');
+    const rows = d ? ligneLiees(sec, d) : [], per = periodeTxt(L);
+    if (!rows.length) {
+      if (!L.afficherVide) return { n:0, html:'' };
+      const dg = d ? diagLie(sec, d) : null;
+      const det = !dg ? '' : dg.cle > 0 ? `Il existe ${dg.cle} ligne(s) pour cette fiche sur d’autres périodes (${dg.annees.join(', ') || 'dates non reconnues'}).` : `Aucune ligne de la table ne correspond à cette fiche (valeur de lien : « ${esc(dg.cleP)} » ; ${dg.total} ligne(s) dans la table).`;
+      return msg(esc(L.videTxt || ('Aucun résultat' + (per ? ' pour ' + per : ''))) + (det ? `<br><small>${det}</small>` : ''));
+    }
+    const hd = cs => cs.map(x => x.nom || libelT(L.table, x.c)), cel = (cs, rs) => { gsForce = L.gs; try { return rs.map(r => cs.map(x => ({ v:fmtG(L.table, x.c, r[x.c]), s:gsT(L.table, x.c, r) }))); } finally { gsForce = false; } };
+    const lg = cs => largeurs(hd(cs), cel(cs, rows).map(r => r.map(c => c.v))), tab = (cs, rs, w) => tabHtml(L, hd(cs), cel(cs, rs), w);
+    let html = '';
+    if (!L.grp) html = tab(cols, rows, lg(cols));
+    else {   // sous-sections pliables : une par valeur de la colonne choisie (ou par année de la date)
+      const g = new Map(), cle = r => String(L.grp === '__annee' ? (anneeDe(L.table, L.dateCol, r[L.dateCol]) ?? '(sans date)') : (fmtG(L.table, L.grp, r[L.grp]) ?? '(vide)'));
+      rows.forEach(r => { const k = cle(r); if (!g.has(k)) g.set(k, []); g.get(k).push(r); });
+      const ks = [...g.keys()].sort((a, b) => (isNaN(a - b) ? a.localeCompare(b, 'fr') : a - b) * (L.grpDir === 'asc' ? 1 : -1)), cs = L.grpHide ? cols.filter(x => x.c !== L.grp) : cols, w = lg(cs);
+      html = ks.map((k, j) => { const id = `s${i}:${k}`, o = etatSections.has(id) ? etatSections.get(id) : (L.sousOuvert === 'toutes' || (L.sousOuvert === 'premiere' && j === 0));
+        return `<details class="theme sub" data-t="${esc(id)}"${o ? ' open' : ''}><summary>${esc(k)} <span class="nb">(${g.get(k).length})</span></summary>${tab(cs, g.get(k), w)}</details>`; }).join('');
+    }
+    return { n:rows.length, html:(per ? `<p class="vide" style="padding:0 12px;margin:0 0 4px;font-size:12px">Période : ${esc(per)}</p>` : '') + html };
+  }
   if (sec.type !== 'tableau') { const l = champsDe(sec.cols, vals); return { n:l.length, html:lignes(l) }; }
   const T = sec.tab, rows = T.rows.map(r => r.cells.map(x => x.c ? { v:fmt(x.c, vals[x.c]), col:true } : { v:x.v, col:false })).filter(r => !T.vides || !r.some(x => x.col) || r.some(x => x.col && x.v !== null && x.v !== ''));
   if (!rows.length || !T.heads.length) return { n:0, html:'' };
-  return { n:rows.length, html:`<div class="mini-wrap"><table class="mini"><thead><tr>${T.heads.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(x => `<td>${esc(x.v ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` };
+  return { n:rows.length, html:tabHtml(T, T.heads, rows.map(r => r.map(x => ({ v:x.v }))), largeurs(T.heads, rows.map(r => r.map(x => x.v)))) };
 }
 function corpsFiche(d) {
-  const secs = cfg.sections.map((sec, i) => ({ sec, i, r:sectionDonnees(sec, d.vals) })).filter(x => x.r.n);
+  const secs = cfg.sections.map((sec, i) => ({ sec, i, r:sectionDonnees(sec, d.vals, d, i) })).filter(x => x.r.n || x.r.force);
   if (!secs.length) return '<p class="vide">Aucune section à afficher. Créez vos sections dans « Configurer le widget », onglet Fiche.</p>';
   const o = opt('ouverture', 'Première section'), ouvert = (k, i) => etatSections.has(k) ? etatSections.get(k) : (o === 'Toutes' || (o !== 'Aucune' && i === 0));
   return (secs.length > 1 ? '<div class="fp-outils"><button type="button" class="fp-tout">Tout déplier / replier</button></div>' : '') +
-    secs.map((x, k) => `<details class="theme" data-t="s${x.i}"${ouvert('s' + x.i, k) ? ' open' : ''}><summary>${esc(x.sec.nom || 'Section')} <span class="nb">(${x.r.n})</span></summary>${x.r.html}</details>`).join('');
+    secs.map((x, k) => `<details class="theme" data-t="s${x.i}"${ouvert('s' + x.i, k) ? ' open' : ''}><summary>${esc(x.sec.nom || 'Section')} <span class="nb">(${x.r.n})</span></summary>${x.sec.desc ? `<p class="sec-desc">${esc(x.sec.desc)}</p>` : ''}${x.r.html}</details>`).join('');
 }
 const panneau = document.getElementById('fiche-panel');
 function ouvrirFiche(id, focus = true) {
-  const m = marqueurs.get(id); if (!m) return; const d = m._cifi; ficheId = id; lieeOuverte = false; fermerIti(); fermerProg(); const eh = enteteDe(d, 'fiche');
+  const m = marqueurs.get(id); if (!m) return; const d = m._cifi; ficheId = id; lieeOuverte = false; fermerIti(); fermerProg(); rafraichirLiees(); const eh = enteteDe(d, 'fiche');
   panneau.style.setProperty('--niv', d.style.couleur);
   panneau.innerHTML = `<div class="fp-tete" style="${eh.st}"><button type="button" class="fp-fermer" aria-label="Fermer la fiche">✕</button><h2 style="${eh.ts}">${esc(eh.titre)}</h2>${eh.sous ? `<div class="sous">${esc(eh.sous)}</div>` : ''}${eh.etiq}</div>
     <div class="fp-corps">${corpsFiche(d)}</div><div class="fp-pied"><button type="button" class="fp-select">Sélectionner la ligne dans Grist</button> <button type="button" class="fp-iti">＋ Ajouter à l’itinéraire</button></div>`;
@@ -740,7 +823,6 @@ map.on('popupopen', e => {
     const a = ev.target.closest('a.ref'); if (a) { ev.preventDefault(); ouvrirLiee(a.dataset.t, +a.dataset.id, a.dataset.n); map.closePopup(); }
   });
 });
-function rafraichir() { if (ficheId !== null && !lieeOuverte) ouvrirFiche(ficheId, false); marqueurs.forEach(m => { if (m.isPopupOpen()) m.getPopup().update(); }); }
 
 /* ================= GRIST ================= */
 grist.ready({
@@ -748,13 +830,13 @@ grist.ready({
   allowSelectBy: true,
   onEditOptions: () => demanderConfig(),   // fait apparaître le bouton « Ouvrir la configuration » dans le panneau de droite de Grist
   columns: [
-    { name:'nom',     title:'Nom de l’établissement', type:'Text' },
+    { name:'nom',     title:'Nom du point', type:'Text' },
     { name:'lat',     title:'Latitude', type:'Numeric' },
     { name:'lng',     title:'Longitude', type:'Numeric' },
     { name:'compteurs', title:'Compteurs : colonnes à compter (choix multiples)', type:'Any', optional:true, allowMultiple:true },
   ],
 });
-grist.onOptions(o => { optionsChargees = true; if (modal.classList.contains('ouvert')) return; opts = o || {}; cfg = norm(opts.cfg); if (lastRec) construire(); });
+grist.onOptions(o => { optionsChargees = true; if (attente && o && o._maj === attente.ts) attente.ok(); if (modal.classList.contains('ouvert')) return; const sg = JSON.stringify({ ...(o || {}), _maj:0 }); if (sg === sigOpts) return; sigOpts = sg; opts = o || {}; cfg = norm(opts.cfg); if (lastRec) construire(); chargerLieesManquantes(); });
 grist.onRecords((records, mappings) => {
   lastRec = records; lastMap = mappings;
   if (!allCols.length) allCols = Object.keys(records[0] || {}).filter(k => k !== 'id' && k !== 'manualSort');
@@ -771,22 +853,25 @@ async function chargerLibelles() {
     C.id.forEach((_, k) => {
       const tn = tDe[C.parentId[k]]; if (!tn) return; const cn = C.colId[k];
       (labelsT[tn] = labelsT[tn] || {})[cn] = C.label[k]; (typesT[tn] = typesT[tn] || {})[cn] = C.type[k];
+      { let wo = {}; try { wo = JSON.parse(C.widgetOptions[k] || '{}') || {}; } catch (e) { /* options illisibles */ } (stylesT[tn] = stylesT[tn] || {})[cn] = { wo, regles:[].concat(C.rules ? C.rules[k] || [] : []).filter(x => typeof x === 'number').map(x => cDe[x]) }; }
       if (C.visibleCol && C.visibleCol[k] && cDe[C.visibleCol[k]]) (visT[tn] = visT[tn] || {})[cn] = cDe[C.visibleCol[k]];
     });
     labels = labelsT[tid] || {}; types = typesT[tid] || {};
   } catch (e) { console.warn('Libellés indisponibles', e); }
   await chargerTable();
 }
+async function chargerTabLiee(x) { try { const rt = await grist.docApi.fetchTable(x), mm = new Map(); rt.id.forEach((id, k) => { const o = { id }; Object.keys(rt).forEach(c => { if (c !== 'id') o[c] = rt[c][k]; }); mm.set(id, o); }); refTabs[x] = mm; delete refEchec[x]; } catch (e) { refEchec[x] = String((e && e.message) || e); } }
+async function chargerLieesManquantes() { const need = tablesLiees().filter(x => !refTabs[x]); if (!need.length) return; await Promise.all(need.map(chargerTabLiee)); if (ficheId !== null && !lieeOuverte) ouvrirFiche(ficheId, false); if (modal.classList.contains('ouvert')) dessiner(); }
+let derLiees = 0;
+function rafraichirLiees() { const need = tablesLiees(); if (!need.length || Date.now() - derLiees < 4000) return; derLiees = Date.now(); Promise.all(need.map(chargerTabLiee)).then(() => { if (ficheId !== null && !lieeOuverte) ouvrirFiche(ficheId, false); }); }
 async function chargerTable() {
   try {
     if (!tid) tid = await grist.selectedTable.getTableId();
     const t = await grist.docApi.fetchTable(tid), cols = Object.keys(t).filter(k => k !== 'id' && k !== 'manualSort' && !k.startsWith('gristHelper_')), m = new Map();
     t.id.forEach((id, k) => { const o = {}; cols.forEach(c => { o[c] = t[c][k]; }); m.set(id, o); });
-    allCols = cols; donnees = m; erreurAcces = '';
-    const liees = new Set(Object.values(types).map(refDe).filter(Boolean).map(r => r.table));   // tables des colonnes « Référence »
-    for (const x of liees) {
-      try { const rt = await grist.docApi.fetchTable(x), mm = new Map(); rt.id.forEach((id, k) => { const o = { id }; Object.keys(rt).forEach(c => { if (c !== 'id') o[c] = rt[c][k]; }); mm.set(id, o); }); refTabs[x] = mm; } catch (e) { /* table liée illisible */ }
-    }
+    allCols = cols; donnees = m; refTabs[tid] = m; erreurAcces = '';
+    const liees = new Set(Object.values(types).map(refDe).filter(Boolean).map(r => r.table)); tablesLiees().forEach(x => liees.add(x)); [...liees].forEach(x => Object.values(typesT[x] || {}).map(refDe).filter(Boolean).forEach(r => { if (r.table !== tid) liees.add(r.table); }));   // tables des colonnes « Référence » et des tableaux liés
+    for (const x of liees) await chargerTabLiee(x);
   } catch (e) { erreurAcces = String((e && e.message) || e); }
 }
 
@@ -918,8 +1003,8 @@ const warnInd = x => x.mode === 'ratio' ? (!x.num || !x.den) : x.mode === 'part'
 function progDescr(I) {
   const lc = c => libel(c), cond = k => `${lc(k.c)} ${(OPS.find(o => o[0] === k.op) || [0, ''])[1]}${k.op === 'vide' || k.op === 'rempli' ? '' : ' « ' + k.v + ' »'}`;
   if (I.mode === 'ratio') return `${I.libNum || lc(I.num)} sur ${I.libDen || lc(I.den)}`;
-  if (I.mode === 'part') return `Part des établissements : ${cond(I.cond)}${I.base.on && I.base.c ? ', parmi ceux où ' + cond(I.base) : ''}`;
-  if (I.mode === 'compte') return I.cond.c ? `Nombre d’établissements : ${cond(I.cond)}` : 'Nombre d’établissements';
+  if (I.mode === 'part') return `Part des points : ${cond(I.cond)}${I.base.on && I.base.c ? ', parmi ceux où ' + cond(I.base) : ''}`;
+  if (I.mode === 'compte') return I.cond.c ? `Nombre de points : ${cond(I.cond)}` : 'Nombre de points';
   return `${I.mode === 'somme' ? 'Somme' : 'Moyenne'} de ${lc(I.col)}`;
 }
 function progDessiner() {
@@ -946,7 +1031,7 @@ function progDessiner() {
   const rows = [...g.values()].sort((x, y) => P.tri === 'nom' ? String(x.nom).localeCompare(String(y.nom), 'fr') : ((val(x) ?? -1) - (val(y) ?? -1)) * (P.tri === 'asc' ? 1 : -1));
   const leg = pctMode ? `<div class="prog-leg">${I.paliers.map((p, j) => `<span><i style="background:${p.couleur}"></i>${j === 0 ? (I.paliers[1] ? 'moins de ' + I.paliers[1].de + ' %' : 'toutes valeurs') : 'dès ' + p.de + ' %'}</span>`).join('')}</div>` : '';
   progPanel.innerHTML = tete + `<div class="fp-corps">${P.inds.length > 1 ? `<label style="font-size:13px">Indicateur <select id="prog-ind">${P.inds.map((x, i) => `<option value="${i}"${x === I ? ' selected' : ''}>${esc(x.nom || 'Indicateur ' + (i + 1))}</option>`).join('')}</select></label>` : ''}
-    <p class="vide" style="font-size:12px;margin:6px 0 0">${esc(progDescr(I))}${I.grp ? ', par ' + esc(libel(I.grp)) : ''}${P.suivre ? ' · établissements visibles' : ''}.</p>${leg}
+    <p class="vide" style="font-size:12px;margin:6px 0 0">${esc(progDescr(I))}${I.grp ? ', par ' + esc(libel(I.grp)) : ''}${P.suivre ? ' · points visibles' : ''}.</p>${leg}
     ${progFocus ? `<div class="prog-focus">Carte limitée à « ${esc(progFocus.v)} » <button type="button" data-p="tous">Tout afficher</button></div>` : ''}
     ${ligne(tot, ' ens')}${rows.map(r => ligne(r)).join('') || (I.grp ? '<p class="vide">Aucune donnée.</p>' : '')}</div>`;
 }
@@ -981,14 +1066,14 @@ function itiDessiner() {
   const legDe = k => iti.legs.length ? iti.legs[iti.depart ? k : k - 1] : undefined;
   const info = l => l === undefined ? '' : l === null ? '<small>Trajet non calculé</small>' : `<small>${fmtDist(l.d)} · ${fmtDuree(l.t)}</small>`;
   const retourLeg = iti.retour && iti.legs.length ? iti.legs[iti.legs.length - 1] : undefined;
-  itiPanel.innerHTML = `<div class="fp-tete" style="--niv:var(--accent)"><button type="button" class="fp-fermer" data-i="fermer" aria-label="Fermer">✕</button><h2>Itinéraire de contrôle</h2></div>
+  itiPanel.innerHTML = `<div class="fp-tete" style="--niv:var(--accent)"><button type="button" class="fp-fermer" data-i="fermer" aria-label="Fermer">✕</button><h2>Itinéraire</h2></div>
     <div class="fp-corps">
       <div class="iti-ligne"><label><input type="radio" name="itimode" value="car"${iti.mode === 'car' ? ' checked' : ''}> 🚗 Voiture</label><label><input type="radio" name="itimode" value="pedestrian"${iti.mode === 'pedestrian' ? ' checked' : ''}> 🚶 À pied</label></div>
       <label style="font-size:14px"><input type="checkbox" id="iti-retour"${iti.retour ? ' checked' : ''}> Revenir au point de départ</label>
-      <div style="margin-top:8px;font-size:14px">Départ : ${iti.depart ? '🏁 point choisi sur la carte <button type="button" data-i="deldep" class="iti-btn2">✕</button>' : attendDepart ? '<em>cliquez sur la carte…</em>' : 'premier établissement de la liste'} <button type="button" data-i="dep" class="iti-btn2">Choisir sur la carte</button></div>
+      <div style="margin-top:8px;font-size:14px">Départ : ${iti.depart ? '🏁 point choisi sur la carte <button type="button" data-i="deldep" class="iti-btn2">✕</button>' : attendDepart ? '<em>cliquez sur la carte…</em>' : 'premier point de la liste'} <button type="button" data-i="dep" class="iti-btn2">Choisir sur la carte</button></div>
       <div class="iti-actions"><button type="button" data-i="tous">＋ Tous les points visibles</button><button type="button" data-i="opt">Optimiser l’ordre</button><button type="button" data-i="calc" class="prim">Calculer l’itinéraire</button><button type="button" data-i="vider">Vider</button></div>
       ${iti.msg ? `<p class="vide" style="font-size:13px">${esc(iti.msg)}</p>` : ''}
-      ${iti.ids.length ? `<ol class="iti-liste">${iti.ids.map((id, k) => `<li><span class="num">${k + 1}</span><span>${esc(nomDe(id))}${info(legDe(k))}</span><span><button type="button" data-i="up" data-k="${k}" aria-label="Monter">▲</button> <button type="button" data-i="down" data-k="${k}" aria-label="Descendre">▼</button> <button type="button" data-i="del" data-k="${k}" aria-label="Retirer">✕</button></span></li>`).join('')}${iti.retour && retourLeg !== undefined ? `<li><span class="num">↩</span><span>Retour au départ${info(retourLeg)}</span><span></span></li>` : ''}</ol>` : '<p class="vide">Ajoutez des établissements : bouton « ＋ Itinéraire » dans le popup, ou « Tous les points visibles » (après vos filtres).</p>'}
+      ${iti.ids.length ? `<ol class="iti-liste">${iti.ids.map((id, k) => `<li><span class="num">${k + 1}</span><span>${esc(nomDe(id))}${info(legDe(k))}</span><span><button type="button" data-i="up" data-k="${k}" aria-label="Monter">▲</button> <button type="button" data-i="down" data-k="${k}" aria-label="Descendre">▼</button> <button type="button" data-i="del" data-k="${k}" aria-label="Retirer">✕</button></span></li>`).join('')}${iti.retour && retourLeg !== undefined ? `<li><span class="num">↩</span><span>Retour au départ${info(retourLeg)}</span><span></span></li>` : ''}</ol>` : '<p class="vide">Ajoutez des points : bouton « ＋ Itinéraire » dans le popup, ou « Tous les points visibles » (après vos filtres).</p>'}
       ${iti.total ? `<div class="iti-total">Total : ${fmtDist(iti.total.d)} · ${fmtDuree(iti.total.t)}</div>` : ''}
     </div><div class="fp-pied"><button type="button" class="iti-btn2" data-i="copier">Copier la feuille de route</button> <button type="button" class="iti-btn2" data-i="imprimer">Imprimer</button></div>`;
   itiMarques();
@@ -1008,7 +1093,7 @@ function itiOptimiser() {
   iti.ids = ordre; itiReset();
 }
 async function itiCalculer() {
-  if (iti.ids.length < (iti.depart ? 1 : 2)) { iti.msg = 'Ajoutez au moins 2 établissements (ou 1 établissement et un départ).'; itiDessiner(); return; }
+  if (iti.ids.length < (iti.depart ? 1 : 2)) { iti.msg = 'Ajoutez au moins 2 points (ou 1 point et un départ).'; itiDessiner(); return; }
   iti.msg = 'Calcul en cours…'; itiDessiner(); itiRoute.clearLayers();
   const url = String(opt('iti_url', 'https://data.geopf.fr/navigation/itineraire')), res = String(opt('iti_resource', 'bdtopo-osrm'));
   const pts = (iti.depart ? [iti.depart] : []).concat(iti.ids.map(ptDe)); if (iti.retour) pts.push(pts[0]);
@@ -1029,7 +1114,7 @@ async function itiCalculer() {
   itiDessiner(); if (itiRoute.getLayers().length) map.fitBounds(itiRoute.getBounds(), { padding:[50,50] });
 }
 function itiTexte() {
-  const l = [`Itinéraire de contrôle – ${iti.mode === 'car' ? 'voiture' : 'à pied'}`];
+  const l = [`Itinéraire – ${iti.mode === 'car' ? 'voiture' : 'à pied'}`];
   iti.ids.forEach((id, k) => { const g = iti.legs.length ? iti.legs[iti.depart ? k : k - 1] : undefined; l.push(`${k + 1}. ${nomDe(id)}${g ? ` (${fmtDist(g.d)}, ${fmtDuree(g.t)})` : ''}`); });
   if (iti.total) l.push(`Total : ${fmtDist(iti.total.d)}, ${fmtDuree(iti.total.t)}`);
   return l.join('\n');
@@ -1072,14 +1157,73 @@ const selCol = (attrs, val) => `<select ${attrs} aria-label="Colonne"><option va
 const selForme = (attrs, val, dis) => `<select ${attrs}${dis ? ' disabled' : ''} aria-label="Forme">${FORMES.map(f => `<option value="${f}"${f === val ? ' selected' : ''}>${FORMES_LIB[f]}</option>`).join('')}</select>`;
 const btn = (a, att, t, lab) => `<button type="button" data-a="${a}" ${att}${lab ? ` aria-label="${lab}" data-aide="${lab}"` : ''}>${t}</button>`;
 
+const optStyleGrist = () => `<label><input type="checkbox" data-o="style_grist"${opt('style_grist', false) === true ? ' checked' : ''}> Reprendre le style et le format des colonnes de Grist (couleurs, gras, dates, nombres)</label>`;
 function blocFicheSections() {
-  return blocEntete('fiche') + cfg.sections.map((sec, i) => { const G = `data-g="${i}"`, vide = sec.type === 'tableau' ? !sec.tab.rows.length : !sec.cols.length;
-    return rgd('sec', i, '', sec.o, `<span class="rg-nom">${esc(sec.nom || 'Section')}</span><small class="res${vide ? ' warn' : ''}">${vide ? '⚠ vide' : sec.type === 'tableau' ? 'tableau · ' + sec.tab.rows.length + ' ligne(s)' : sec.cols.length + ' colonne(s)'}</small><span class="rg-btns">${btn('sup', G, '▲', 'Monter')}${btn('sdown', G, '▼', 'Descendre')}${btn('sdel', G, '✕', 'Supprimer la section')}</span>`,
-      `<div class="rg-l2"><input type="text" value="${esc(sec.nom)}" data-a="nom" ${G} aria-label="Nom de la section" placeholder="Nom de la section"></div>${blocSection(sec, i)}`); }).join('') + '<button type="button" class="rg-ajout" data-a="sadd">+ Ajouter une section</button> <button type="button" class="rg-ajout" data-a="sadd-t">+ Ajouter une section « tableau »</button>';
+  return blocEntete('fiche') + cfg.sections.map((sec, i) => { const G = `data-g="${i}"`, vide = sec.type === 'lie' ? (!sec.lie.table || !sec.lie.cle || !sec.lie.cols.some(x => x.c)) : sec.type === 'tableau' ? !sec.tab.rows.length : !sec.cols.length;
+    return rgd('sec', i, '', sec.o, `<span class="rg-nom">${esc(sec.nom || 'Section')}</span><small class="res${vide ? ' warn' : ''}">${vide ? '⚠ vide' : sec.type === 'lie' ? 'tableau lié · ' + sec.lie.cols.length + ' colonne(s)' : sec.type === 'tableau' ? 'tableau · ' + sec.tab.rows.length + ' ligne(s)' : sec.cols.length + ' colonne(s)'}</small><span class="rg-btns">${btn('sup', G, '▲', 'Monter')}${btn('sdown', G, '▼', 'Descendre')}${btn('sdel', G, '✕', 'Supprimer la section')}</span>`,
+      `<div class="rg-l2"><input type="text" value="${esc(sec.nom)}" data-a="nom" ${G} aria-label="Nom de la section" placeholder="Nom de la section"></div><div class="rg-l2"><input type="text" value="${esc(sec.desc)}" data-a="sdesc" ${G} aria-label="Description de la section" placeholder="Description sous le titre (facultatif)"></div>${blocSection(sec, i)}`); }).join('') + '<button type="button" class="rg-ajout" data-a="sadd">+ Ajouter une section</button>';
+}
+function autoLie(table) {   // réglage de départ générique : table, colonne de lien (même libellé ou référence vers cette table), date et premières colonnes
+  const tabs = tablesDispo(), pref = table || tabs[0] || '', cc = colsDe(pref), nrm = x => sansAccent(String(x)).replace(/[^a-z0-9]/g, '');
+  const mainLib = new Map(allCols.map(c => [nrm(libel(c)), c])), typ = c => (typesT[pref] || {})[c] || '';
+  let cle = '', cle2 = '';
+  const ref = cc.find(c => { const r = refDe(typ(c)); return r && r.table === tid; });
+  if (ref) cle = ref;   // colonne Référence vers la table affichée : lien par l'identifiant de la ligne
+  else {
+    const cand = cc.filter(c => mainLib.has(nrm(libelT(pref, c))));
+    cle = cand.find(c => /siret|siren|identifiant|^id|code|num|ref/i.test(libelT(pref, c))) || cand[0] || '';
+    if (cle) cle2 = mainLib.get(nrm(libelT(pref, cle)));
+  }
+  const date = cc.find(c => typ(c).startsWith('Date')) || '';
+  const cols = [date].concat(cc.filter(c => c !== cle && c !== date)).filter(Boolean).slice(0, 5);
+  return nLie({ table:pref, cle, cle2, dateCol:date, mode:'toutes', cols:cols.map(c => ({ c, nom:'' })) });
+}
+function bilanLie(sec) {   // un seul message : la table est-elle lue, et des fiches y sont-elles reliées ?
+  const L = sec.lie; if (!L.table || !L.cle) return '';
+  const tab = refTabs[L.table], boite = (c, t) => `<div class="lie-bilan ${c}">${t}</div>`;
+  if (!tab) return boite('ko', refEchec[L.table] ? `⚠ Table illisible : ${esc(refEchec[L.table])}` : 'Table non chargée : réessayez dans un instant.');
+  const main = donnees.size ? [...donnees.entries()].map(([id, o]) => ({ id, vals:o })) : [...marqueurs.values()].map(m => ({ id:m._cifi.id, vals:m._cifi.vals })), lk = new Set();
+  tab.forEach(row => lk.add(nk(cleLiee(L.table, L.cle, row, L.cle2))));
+  const n = main.filter(r => lk.has(nk(L.cle2 ? r.vals[L.cle2] : r.id))).length;
+  return n ? boite('ok', `✓ Table lue : ${tab.size} ligne(s), ${n} fiche(s) sur ${main.length} reliée(s).`) : boite('ko', `⚠ Table lue (${tab.size} ligne(s)) mais aucune fiche reliée : vérifiez les colonnes de lien.`);
+}
+function blocLie(sec, i) {
+  const L = sec.lie, G = `data-g="${i}"`, A = f => `data-a="lie" ${G} data-f="${f}"`, cT = colsDe(L.table);
+  const selT = (f, v, vide) => `<select ${A(f)}><option value="">${vide}</option>${cT.map(c => `<option value="${esc(c)}"${c === v ? ' selected' : ''}>${esc(libelT(L.table, c))}</option>`).join('')}</select>`;
+  return `<div class="rg-sous">Table liée</div>
+    <div class="rg-l2"><select ${A('table')} aria-label="Table liée"><option value="">Choisir une table…</option>${tablesDispo().map(t => `<option value="${esc(t)}"${t === L.table ? ' selected' : ''}>${esc(joli(t))}</option>`).join('')}</select></div>
+    ${L.table ? `<div class="rg-sous">Lien avec la fiche</div>
+    <label>Colonne de la table liée ${selT('cle', L.cle, 'Choisir…')}</label>
+    <label>correspond à la colonne de la fiche <select ${A('cle2')}><option value="">(identifiant de la ligne)</option>${allCols.map(c => `<option value="${esc(c)}"${c === L.cle2 ? ' selected' : ''}>${esc(libel(c))}</option>`).join('')}</select></label>
+    <div class="rg-sous">Période</div>
+    <label>Colonne de date ${selT('dateCol', L.dateCol, 'Aucune')}</label>
+    <label>Afficher <select ${A('mode')}>${[['toutes', 'Toutes les périodes'], ['courante', 'Année en cours'], ['precedente', 'Année précédente'], ['fixe', 'Une année précise']].map(([v, t]) => `<option value="${v}"${L.mode === v ? ' selected' : ''}>${t}</option>`).join('')}</select>${L.mode === 'fixe' ? `<input type="number" min="1990" max="2200" ${A('annee')} value="${L.annee || ''}" placeholder="année" style="width:90px" aria-label="Année">` : ''}</label>
+    <div class="rg-sous">Présentation</div>
+    <label>Taille du texte du tableau <input type="number" min="8" max="30" ${A('taille')} value="${L.taille || ''}" placeholder="par défaut" style="width:92px"> px</label>
+    <label>Taille du texte des en-têtes <input type="number" min="8" max="30" ${A('tailleTh')} value="${L.tailleTh || ''}" placeholder="comme le tableau" style="width:120px"> px</label>
+    <label>Largeur des colonnes <select ${A('larg')}><option value="auto"${L.larg === 'auto' ? ' selected' : ''}>Ajustée : colonnes courtes sur une ligne, texte long à la ligne</option><option value="ligne"${L.larg === 'ligne' ? ' selected' : ''}>Tout sur une ligne (défilement horizontal, comme dans Grist)</option></select></label>
+    <label><input type="checkbox" ${A('gs')}${L.gs ? ' checked' : ''}> Reprendre le style et le format des colonnes de Grist (couleurs, gras, dates, nombres)</label>
+    <div class="rg-sous">Regroupement (sous-sections pliables)</div>
+    <label>Regrouper par <select ${A('grp')}><option value="">Aucun regroupement</option>${L.dateCol ? '<option value="__annee"' + (L.grp === '__annee' ? ' selected' : '') + '>Année de la colonne de date</option>' : ''}${cT.map(c => `<option value="${esc(c)}"${c === L.grp ? ' selected' : ''}>${esc(libelT(L.table, c))}</option>`).join('')}</select></label>
+    ${L.grp ? `<label>Ordre <select ${A('grpDir')}><option value="desc"${L.grpDir === 'desc' ? ' selected' : ''}>Décroissant</option><option value="asc"${L.grpDir === 'asc' ? ' selected' : ''}>Croissant</option></select></label>
+    <label>Sous-sections dépliées par défaut <select ${A('sousOuvert')}>${[['premiere', 'La première'], ['toutes', 'Toutes'], ['aucune', 'Aucune']].map(([v, t]) => `<option value="${v}"${L.sousOuvert === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label><input type="checkbox" ${A('grpHide')}${L.grpHide ? ' checked' : ''}> Masquer la colonne de regroupement dans le tableau</label>` : ''}
+    <div class="rg-sous">Colonnes du tableau</div>
+    ${L.cols.map((x, j) => { const B = `${G} data-j="${j}"`, e = `lc:${i}:${j}`;
+      return rgd('el', '', `data-e="${e}"`, elOuverts.has(e) || !x.c, `<span class="rg-nom">${esc(x.c ? libelT(L.table, x.c) : 'Choisir une colonne…')}${x.nom ? ' <small>→ ' + esc(x.nom) + '</small>' : ''}</span>${GEAR}<span class="rg-btns">${btn('lc-up', B, '▲', 'Monter')}${btn('lc-down', B, '▼', 'Descendre')}${btn('lc-del', B, '✕', 'Retirer la colonne')}</span>`,
+      `<div class="rg-l2"><select data-a="lc" ${B} data-f="c" aria-label="Colonne"><option value="">Colonne…</option>${cT.map(c => `<option value="${esc(c)}"${c === x.c ? ' selected' : ''}>${esc(libelT(L.table, c))}</option>`).join('')}</select><input type="text" data-a="lc" ${B} data-f="nom" value="${esc(x.nom)}" placeholder="Titre (par défaut : nom de la colonne)" style="flex:1;min-width:120px" aria-label="Titre"></div>`); }).join('')}
+    ${btn('lc-add', G, '+ colonne')}
+    <div class="rg-sous">Tri et limite</div>
+    <label>Trier par ${selT('triCol', L.triCol, 'La date (par défaut)')} <select ${A('triDir')}><option value="desc"${L.triDir === 'desc' ? ' selected' : ''}>Du plus récent au plus ancien</option><option value="asc"${L.triDir === 'asc' ? ' selected' : ''}>Du plus ancien au plus récent</option></select></label>
+    <label>Nombre maximal de lignes <input type="number" min="0" max="200" ${A('max')} value="${L.max || ''}" placeholder="toutes" style="width:90px"></label>
+    <label><input type="checkbox" ${A('afficherVide')}${L.afficherVide ? ' checked' : ''}> Afficher la section quand il n’y a aucun résultat</label>
+    ${L.afficherVide ? `<label>Texte affiché <input type="text" ${A('videTxt')} value="${esc(L.videTxt)}" placeholder="Aucun résultat pour l’année en cours"></label>` : ''}
+    ${bilanLie(sec)}` : ''}`;
 }
 function blocSection(sec, i) {
   const T = sec.tab, G = `data-g="${i}"`;
-  const type = `<div class="rg-l2"><label>Type de section <select data-a="sec-type" ${G}><option value="liste"${sec.type === 'liste' ? ' selected' : ''}>Liste de colonnes</option><option value="tableau"${sec.type === 'tableau' ? ' selected' : ''}>Mini tableau (lignes × colonnes)</option></select></label></div>`;
+  const type = `<div class="rg-l2"><label>Type de section <select data-a="sec-type" ${G}><option value="liste"${sec.type === 'liste' ? ' selected' : ''}>Liste de colonnes</option><option value="tableau"${sec.type === 'tableau' ? ' selected' : ''}>Mini tableau (lignes × colonnes)</option><option value="lie"${sec.type === 'lie' ? ' selected' : ''}>Tableau lié (lignes d’une autre table)</option></select></label></div>`;
+  if (sec.type === 'lie') return type + blocLie(sec, i);
   if (sec.type !== 'tableau') return type + blocListe(String(i));
   return type + `<div class="rg-sous">Colonnes du tableau</div>
     <div class="rg-l2">${T.heads.map((h, j) => `<input type="text" data-a="tb-h" ${G} data-j="${j}" value="${esc(h)}" aria-label="Titre de la colonne ${j + 1}" style="max-width:130px">${btn('tb-hdel', `${G} data-j="${j}"`, '✕', 'Retirer la colonne')}`).join('')}${btn('tb-hadd', G, '+ colonne')}</div>
@@ -1087,9 +1231,12 @@ function blocSection(sec, i) {
     ${T.rows.map((r, k) => { const K = `${G} data-k="${k}"`; return `<div class="tb-ligne"><div class="rg-l1"><b>Ligne ${k + 1}</b>${btn('tb-rup', K, '▲', 'Monter')}${btn('tb-rdown', K, '▼', 'Descendre')}${btn('tb-rdup', K, 'Dupliquer')}${btn('tb-rdel', K, '✕', 'Supprimer la ligne')}</div>
       <div class="rg-l2">${T.heads.map((h, j) => { const x = r.cells[j] || { c:'', v:'' }, at = `data-a="tb-c" ${K} data-j="${j}"`; return `<div class="tb-cell"><small>${esc(h || 'Colonne ' + (j + 1))}</small><select ${at} data-f="c" aria-label="Source de la cellule"><option value="">Texte fixe</option>${allCols.map(c => `<option value="${esc(c)}"${c === x.c ? ' selected' : ''}>${esc(libel(c))}</option>`).join('')}</select>${x.c ? '' : `<input type="text" ${at} data-f="v" value="${esc(x.v)}" placeholder="texte" aria-label="Texte">`}</div>`; }).join('')}</div></div>`; }).join('')}
     ${btn('tb-radd', G, '+ ligne')}
+    <label>Taille du texte du tableau <input type="number" min="8" max="30" data-a="tb" ${G} data-f="taille" value="${T.taille || ''}" placeholder="par défaut" style="width:92px"> px</label>
+    <label>Taille du texte des en-têtes <input type="number" min="8" max="30" data-a="tb" ${G} data-f="tailleTh" value="${T.tailleTh || ''}" placeholder="comme le tableau" style="width:120px"> px</label>
+    <label>Largeur des colonnes <select data-a="tb" ${G} data-f="larg"><option value="auto"${T.larg === 'auto' ? ' selected' : ''}>Ajustée : colonnes courtes sur une ligne, texte long à la ligne</option><option value="ligne"${T.larg === 'ligne' ? ' selected' : ''}>Tout sur une ligne (défilement horizontal, comme dans Grist)</option></select></label>
     <label><input type="checkbox" data-a="tb" ${G} data-f="vides"${T.vides ? ' checked' : ''}> Masquer les lignes dont toutes les valeurs de colonnes sont vides</label>`;
 }
-function rgd(ok, idx, extra, open, sum, body) { return `<details class="regle gen${ok === 'el' ? ' el' : ''}" data-ok="${ok}" data-i="${idx}" ${extra}${open ? ' open' : ''}><summary${ok === 'el' ? ' data-aide="Configurer cet élément"' : ''}>${sum}</summary><div class="rg-corps-r">${body}</div></details>`; }
+function rgd(ok, idx, extra, open, sum, body) { return `<details class="regle gen el" data-ok="${ok}" data-i="${idx}" ${extra}${open ? ' open' : ''}><summary data-aide="Configurer">${ok === 'el' ? sum : sum.replace('<span class="rg-btns">', GEAR + '<span class="rg-btns">')}</summary><div class="rg-corps-r">${body}</div></details>`; }
 function resumeEntree(x) { return [x.gn && 'nom gras', x.gi && 'nom italique', x.vg && 'valeur grasse', x.vi && 'valeur italique', x.vb && 'pastille', x.ta && ({ p:'petite', g:'grande', tg:'très grande' })[x.ta], x.cn && 'couleur du nom', x.cw && 'couleur de la valeur'].filter(Boolean).join(' · ') || 'style par défaut'; }
 function blocListe(g) {
   const l = listeDe(g), cb = (a, at, v, t) => `<label><input type="checkbox" data-a="${a}" ${at}${v ? ' checked' : ''}> ${t}</label>`;
@@ -1124,7 +1271,7 @@ function blocElementsGauche() {
     HINTS = { count:'Texte affiché · variables : {n} visibles, {total} au total, {s} pluriel', compteurs:'Titre au-dessus des compteurs (facultatif)', commune:'Texte de la barre de recherche de commune', filtres:'Titre (laissez vide pour n’afficher que l’icône)', version:'Texte avant le numéro (facultatif)' };
   const lignes = vis.map(k => {
     const E = `data-e="${k}"`, L_ = LIB[k], btns = `<span class="rg-btns">${btn('ord-up', E, '▲', 'Monter')}${btn('ord-down', E, '▼', 'Descendre')}${btn('el-del', E, '✕', 'Retirer du panneau')}</span>`;
-    const corps = (L_ ? `<div class="rg-l2"><input type="text" data-o="${L_[0]}" value="${esc(BLANC_OK.includes(L_[0]) ? optBrut(L_[0], L_[1]) : opt(L_[0], L_[1]))}" placeholder="${esc(HINTS[k] || 'Texte affiché')}" style="flex:1;min-width:150px" aria-label="Texte : ${esc(ELTS_GAUCHE[k])}">${k === 'liste' ? `<input type="text" data-o="lib_liste2" value="${esc(opt('lib_liste2', 'Masquer la liste des établissements'))}" placeholder="Texte quand la liste est ouverte" style="flex:1;min-width:150px" aria-label="Texte quand la liste est ouverte">` : ''}</div>` : '')
+    const corps = (L_ ? `<div class="rg-l2"><input type="text" data-o="${L_[0]}" value="${esc(BLANC_OK.includes(L_[0]) ? optBrut(L_[0], L_[1]) : opt(L_[0], L_[1]))}" placeholder="${esc(HINTS[k] || 'Texte affiché')}" style="flex:1;min-width:150px" aria-label="Texte : ${esc(ELTS_GAUCHE[k])}">${k === 'liste' ? `<input type="text" data-o="lib_liste2" value="${esc(opt('lib_liste2', 'Masquer la liste des points'))}" placeholder="Texte quand la liste est ouverte" style="flex:1;min-width:150px" aria-label="Texte quand la liste est ouverte">` : ''}</div>` : '')
       + (ICO_K.includes(k) ? `<div class="rg-l2"><input type="text" data-o="ico_${k}" value="${esc(opt('ico_' + k, ICO_DEF[k] || ''))}" placeholder="Icône (emoji ou symbole)" style="max-width:170px" aria-label="Icône">${k === 'liste' ? `<input type="text" data-o="ico_liste2" value="${esc(opt('ico_liste2', ''))}" placeholder="Icône quand la liste est ouverte" style="max-width:210px" aria-label="Icône liste ouverte">` : ''}</div>` : '')
       + (AIDE_K.includes(k) ? `<div class="rg-l2"><input type="text" data-o="aide_${k}" value="${esc(opt('aide_' + k, ''))}" placeholder="Aide au survol (facultatif)" style="flex:1;min-width:200px" aria-label="Aide au survol"></div>` : '')
       + ((k === 'liste' || k === 'legende') ? `<div class="rg-l2"><label><input type="checkbox" data-o="ouv_${k}"${(k === 'liste' ? opt('ouv_liste', false) === true : opt('ouv_legende', true) !== false) ? ' checked' : ''}> déplié par défaut</label></div>` : '')
@@ -1161,7 +1308,7 @@ function carteRegle(r, i) {
     <div class="rg-l2"><label>Sur le point :</label><select data-a="rct" ${R} aria-label="Contenu du point"><option value=""${!r.contenu.t ? ' selected' : ''}>Rien</option><option value="emoji"${r.contenu.t === 'emoji' ? ' selected' : ''}>Un emoji ou un texte</option><option value="valeur"${r.contenu.t === 'valeur' ? ' selected' : ''}>La valeur d’une colonne</option></select>
       ${r.contenu.t === 'emoji' ? `<input type="text" data-a="re" ${R} value="${esc(r.contenu.e)}" placeholder="ex. ✅" style="max-width:90px" aria-label="Emoji">` : r.contenu.t === 'valeur' ? selCol(`data-a="rcc" ${R}`, r.contenu.c) : ''}</div>
     <div class="rg-l2"><label>Bulle :</label><select data-a="rbt" ${R} aria-label="Bulle"><option value=""${!r.bulle.t ? ' selected' : ''}>Aucune</option><option value="coin"${r.bulle.t === 'coin' ? ' selected' : ''}>Pastille dans le coin du point</option><option value="texte"${r.bulle.t === 'texte' ? ' selected' : ''}>Bulle de texte à côté du point</option></select>
-      ${r.bulle.t ? `<select data-a="rbs" ${R} aria-label="Contenu de la bulle"><option value=""${!r.bulle.src ? ' selected' : ''}>Texte fixe</option><option value="col"${r.bulle.src === 'col' ? ' selected' : ''}>Valeur d’une colonne</option></select>` + (r.bulle.src === 'col' ? selCol(`data-a="rbc" ${R}`, r.bulle.c) : `<input type="text" data-a="rbe" ${R} value="${esc(r.bulle.e)}" placeholder="ex. ! ou À contrôler" style="max-width:150px" aria-label="Texte de la bulle">`) + `<input type="color" data-a="rbk" ${R} value="${r.bulle.couleur}" aria-label="Couleur de la bulle">` : ''}</div>
+      ${r.bulle.t ? `<select data-a="rbs" ${R} aria-label="Contenu de la bulle"><option value=""${!r.bulle.src ? ' selected' : ''}>Texte fixe</option><option value="col"${r.bulle.src === 'col' ? ' selected' : ''}>Valeur d’une colonne</option></select>` + (r.bulle.src === 'col' ? selCol(`data-a="rbc" ${R}`, r.bulle.c) : `<input type="text" data-a="rbe" ${R} value="${esc(r.bulle.e)}" placeholder="ex. ! ou 3" style="max-width:150px" aria-label="Texte de la bulle">`) + `<input type="color" data-a="rbk" ${R} value="${r.bulle.couleur}" aria-label="Couleur de la bulle">` : ''}</div>
     <div class="rg-l2"><label><input type="checkbox" data-a="rpu-on" ${R}${r.pulse.on ? ' checked' : ''}> Signal pulsé</label>${r.pulse.on ? `<input type="color" data-a="rpuc" ${R} value="${r.pulse.couleur}" aria-label="Couleur du signal"><select data-a="rpur" ${R} aria-label="Rythme du signal">${[['lent', 'Lent'], ['normal', 'Normal'], ['rapide', 'Rapide']].map(([v, t]) => `<option value="${v}"${r.pulse.rythme === v ? ' selected' : ''}>${t}</option>`).join('')}</select>` : ''}</div></div></details>`;
 }
 function blocSauvegarde() {
@@ -1171,19 +1318,11 @@ function blocSauvegarde() {
     <div class="rg-sous">Importer</div><textarea id="rg-imp" rows="4" style="width:100%;font:12px monospace" placeholder="Collez ici une configuration exportée" aria-label="Configuration à importer"></textarea>
     <div class="rg-l2"><button type="button" data-a="imp" class="rg-ajout">Importer et remplacer mes réglages</button></div></section>`;
 }
-function blocStyles() {
-  return `<section><h3>Styles de texte du panneau de gauche</h3><p class="vide" style="font-size:12px;margin:0 0 4px">Pour chaque texte : couleur, fond (en pastille, comme l’étiquette du popup), taille, gras, italique. Un filtre peut aussi avoir son propre fond dans l’onglet Filtres.</p>
-    <ul>${Object.entries(STYLES_TXT).map(([k, [nom]]) => { const x = cfg.styles[k], D = `data-a="st" data-sk="${k}"`; return `<li class="rg-ord"><div class="rg-l1"><b>${nom}</b></div>
-      <div class="rg-l2"><label><input type="checkbox" ${D} data-f="coul-on"${x.coul ? ' checked' : ''}> Couleur</label><input type="color" ${D} data-f="coul" value="${x.coul || '#1d2733'}"${x.coul ? '' : ' disabled'} aria-label="Couleur du texte">
-      <label><input type="checkbox" ${D} data-f="fond-on"${x.fond ? ' checked' : ''}> Fond</label><input type="color" ${D} data-f="fond" value="${x.fond || '#e8eef7'}"${x.fond ? '' : ' disabled'} aria-label="Couleur du fond">
-      <label>Taille <input type="number" min="0" max="40" ${D} data-f="taille" value="${x.taille}" style="width:56px"> px</label>
-      <label><input type="checkbox" ${D} data-f="gras"${x.gras ? ' checked' : ''}> Gras</label><label><input type="checkbox" ${D} data-f="ital"${x.ital ? ' checked' : ''}> Italique</label></div></li>`; }).join('')}</ul></section>`;
-}
 function blocMessages() {
   const sel = (A, f, ch, v) => `<select ${A} data-f="${f}">${ch.map(([val, t]) => `<option value="${val}"${val === v ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
-  return `<p class="vide" style="font-size:12px">Un message passager s’affiche en bandeau sur la carte. Plusieurs messages s’affichent à tour de rôle. Décochez « Actif » pour en arrêter un.</p>
+  return `<p class="vide" style="font-size:12px">Un message passager s’affiche en bandeau sur la carte. Plusieurs messages s’affichent à tour de rôle.</p>
     ${cfg.messages.map((m, i) => { const A = `data-a="ms" data-i="${i}"`, I = `data-i="${i}"`;
-      return rgd('ms', i, '', m.o, `<span class="rg-nom">${m.actif ? '●' : '○'} ${esc(m.texte.slice(0, 36) || 'Message vide')}</span><small class="res${m.actif && !m.texte.trim() ? ' warn' : ''}">${m.actif ? (m.texte.trim() ? 'actif' : '⚠ sans texte') : 'inactif'}</small><span class="rg-btns">${btn('ms-prev', I, 'Aperçu')}${btn('ms-up', I, '▲', 'Monter')}${btn('ms-down', I, '▼', 'Descendre')}${btn('ms-del', I, '✕', 'Supprimer')}</span>`,
+      return rgd('ms', i, '', m.o, `<span class="rg-nom">${esc(m.texte.slice(0, 40) || 'Message ' + (i + 1))}</span><small class="res${m.actif ? '' : ' warn'}">${m.actif ? 'actif' : 'inactif'}</small><span class="rg-btns">${btn('ms-prev', I, 'Aperçu')}${btn('ms-up', I, '▲', 'Monter')}${btn('ms-down', I, '▼', 'Descendre')}${btn('ms-del', I, '✕', 'Supprimer')}</span>`,
       `<div class="rg-l2"><label><input type="checkbox" ${A} data-f="actif"${m.actif ? ' checked' : ''}> Actif</label></div>
       <div class="rg-l2"><input type="text" ${A} data-f="ico" value="${esc(m.ico)}" placeholder="Icône" style="max-width:70px" aria-label="Icône"><input type="text" ${A} data-f="texte" value="${esc(m.texte)}" placeholder="Texte du message" style="flex:1;min-width:200px" aria-label="Texte du message"></div>
       <div class="rg-l2">${sel(A, 'style', [['info', 'Information'], ['attention', 'Attention'], ['urgent', 'Urgent'], ['perso', 'Couleurs personnalisées']], m.style)}${m.style === 'perso' ? `<label>Fond <input type="color" ${A} data-f="fond" value="${m.fond}"></label><label>Texte <input type="color" ${A} data-f="coul" value="${m.coul}"></label>` : ''}${sel(A, 'pos', [['haut', 'En haut de la carte'], ['bas', 'En bas de la carte']], m.pos)}</div>
@@ -1195,15 +1334,14 @@ function blocMessages() {
 function blocRecherche() {
   const R = cfg.recherche;
   return `<section><h3>Barre de recherche</h3>
-    <label><input type="checkbox" data-a="rch" data-f="nom"${R.nom ? ' checked' : ''}> Rechercher dans le nom de l’établissement</label>
+    <label><input type="checkbox" data-a="rch" data-f="nom"${R.nom ? ' checked' : ''}> Rechercher dans le nom du point</label>
     <label>Mode <select data-a="rch" data-f="mode"><option value="toutes"${R.mode === 'toutes' ? ' selected' : ''}>Une seule barre, tous les champs à la fois</option><option value="choix"${R.mode === 'choix' ? ' selected' : ''}>L’utilisateur choisit le champ (liste à côté de la barre)</option></select></label>
     ${R.cols.map((x, i) => `<div class="rg-sec">${selCol(`data-a="rc" data-i="${i}" data-f="c"`, x.c)}<input type="text" data-a="rc" data-i="${i}" data-f="nom" value="${esc(x.nom)}" placeholder="Libellé (facultatif)" aria-label="Libellé">${btn('rc-up', `data-i="${i}"`, '▲', 'Monter')}${btn('rc-down', `data-i="${i}"`, '▼', 'Descendre')}${btn('rc-del', `data-i="${i}"`, '✕', 'Retirer')}</div>`).join('')}
-    <button type="button" class="rg-ajout" data-a="rc-add">+ Ajouter un champ de recherche (SIRET, commune…)</button>
+    <button type="button" class="rg-ajout" data-a="rc-add">+ Ajouter un champ de recherche</button>
     <label><input type="checkbox" data-o="sug_on"${opt('sug_on', true) !== false ? ' checked' : ''}> Proposer des suggestions pendant la frappe</label>
     <label>Nombre de suggestions <input type="number" min="3" max="20" data-o="sug_max" value="${+opt('sug_max', 8)}" style="width:64px"> · à partir de <input type="number" min="1" max="5" data-o="sug_min" value="${+opt('sug_min', 2)}" style="width:56px"> lettres</label>
     <label>Information sous le nom dans les suggestions ${selCol('data-a="rch" data-f="info"', R.info)}</label>
-    <p class="vide" style="font-size:12px;margin:6px 0 0">Avec plusieurs mots, tous doivent être trouvés (ex. « poissonnerie amiens »). Le texte affiché dans la barre se règle dans l’onglet Général, « Éléments du panneau de gauche ».</p></section>
-    ${''}`;
+    <p class="vide" style="font-size:12px;margin:6px 0 0">Avec plusieurs mots, tous doivent être trouvés. Le texte affiché dans la barre se règle dans l’onglet Général, « Éléments du panneau de gauche ».</p></section>`;
 }
 function blocFiltres() {
   const selC = (at, v) => `<select ${at} aria-label="Colonne"><option value="">Colonne…</option>${allCols.map(c => `<option value="${esc(c)}"${c === v ? ' selected' : ''}>${esc(libel(c))}</option>`).join('')}</select>`;
@@ -1225,24 +1363,24 @@ function blocFiltres() {
     <button type="button" class="rg-ajout" data-a="fl-add">+ Ajouter un filtre</button>`;
 }
 function blocProg() {
-  const P = cfg.prog, MODES = [['ratio', 'Rapport entre deux colonnes (somme ÷ somme)'], ['part', 'Part des établissements qui remplissent une condition'], ['compte', 'Nombre d’établissements'], ['somme', 'Somme d’une colonne'], ['moyenne', 'Moyenne d’une colonne']];
+  const P = cfg.prog, MODES = [['ratio', 'Rapport entre deux colonnes (somme ÷ somme)'], ['part', 'Part des points qui remplissent une condition'], ['compte', 'Nombre de points'], ['somme', 'Somme d’une colonne'], ['moyenne', 'Moyenne d’une colonne']];
   const selV = (at, v, vide) => `<select ${at}><option value="">${vide}</option>${allCols.map(c => `<option value="${esc(c)}"${c === v ? ' selected' : ''}>${esc(libel(c))}</option>`).join('')}</select>`;
   const cond = (i, w, k, titre) => { const C = `data-a="pc" data-i="${i}" data-w="${w}"`; return `<div class="rg-sous">${titre}</div><div class="rg-l2">${selCol(`${C} data-f="c"`, k.c)}<select ${C} data-f="op" aria-label="Condition">${OPS.map(([v, t]) => `<option value="${v}"${v === k.op ? ' selected' : ''}>${t}</option>`).join('')}</select>${k.op === 'vide' || k.op === 'rempli' ? '' : `<input type="text" ${C} data-f="v" value="${esc(k.v)}" placeholder="valeur" aria-label="Valeur">`}</div>`; };
   return `<section><h3>Options</h3>
-    <label><input type="checkbox" data-a="pg" data-f="suivre"${P.suivre ? ' checked' : ''}> Calculer sur les établissements visibles (selon la recherche et les filtres)</label>
-    <label><input type="checkbox" data-a="pg" data-f="clic"${P.clic ? ' checked' : ''}> Un clic sur une barre n’affiche sur la carte que les établissements de cette barre</label>
+    <label><input type="checkbox" data-a="pg" data-f="suivre"${P.suivre ? ' checked' : ''}> Calculer sur les points visibles (selon la recherche et les filtres)</label>
+    <label><input type="checkbox" data-a="pg" data-f="clic"${P.clic ? ' checked' : ''}> Un clic sur une barre n’affiche sur la carte que les points de cette barre</label>
     <label>Tri des barres <select data-a="pg" data-f="tri">${[['nom', 'Par nom'], ['asc', 'Résultat croissant'], ['desc', 'Résultat décroissant']].map(([v, t]) => `<option value="${v}"${P.tri === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label></section>
     ${P.inds.map((x, i) => { const A = `data-a="pi" data-i="${i}"`, pct = x.mode === 'ratio' || x.mode === 'part';
       return rgd('pi', i, '', x.o, `<span class="rg-nom">${esc(x.nom || 'Indicateur ' + (i + 1))}</span>${warnInd(x) ? '<small class="res warn">⚠ à compléter</small>' : `<small class="res">${esc(MODES.find(m => m[0] === x.mode)[1].split(' (')[0])}</small>`}<span class="rg-btns">${btn('pi-del', `data-i="${i}"`, '✕', 'Supprimer l’indicateur')}</span>`,
       `<div class="rg-l2"><input type="text" ${A} data-f="nom" value="${esc(x.nom)}" placeholder="Nom de l’indicateur" aria-label="Nom de l’indicateur"></div>
       <label>Regrouper par ${selV(`${A} data-f="grp"`, x.grp, 'Aucun (une seule barre)')}</label>
       <label>Mode de calcul <select ${A} data-f="mode">${MODES.map(([v, t]) => `<option value="${v}"${x.mode === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
-      ${x.mode === 'ratio' ? `<label>Numérateur ${selCol(`${A} data-f="num"`, x.num)}</label><label>Libellé du numérateur <input type="text" ${A} data-f="libNum" value="${esc(x.libNum)}" placeholder="ex. réalisés" style="max-width:160px"></label>
-        <label>Dénominateur ${selCol(`${A} data-f="den"`, x.den)}</label><label>Libellé du dénominateur <input type="text" ${A} data-f="libDen" value="${esc(x.libDen)}" placeholder="ex. attendus" style="max-width:160px"></label>` : ''}
-      ${x.mode === 'part' ? cond(i, 'cond', x.cond, 'Part des établissements où…') + `<label><input type="checkbox" ${A} data-f="baseon"${x.base.on ? ' checked' : ''}> Seulement parmi une partie des établissements</label>${x.base.on ? cond(i, 'base', x.base, 'Parmi ceux où…') : ''}` : ''}
+      ${x.mode === 'ratio' ? `<label>Numérateur ${selCol(`${A} data-f="num"`, x.num)}</label><label>Libellé du numérateur <input type="text" ${A} data-f="libNum" value="${esc(x.libNum)}" placeholder="Texte affiché pour le numérateur" style="max-width:160px"></label>
+        <label>Dénominateur ${selCol(`${A} data-f="den"`, x.den)}</label><label>Libellé du dénominateur <input type="text" ${A} data-f="libDen" value="${esc(x.libDen)}" placeholder="Texte affiché pour le dénominateur" style="max-width:160px"></label>` : ''}
+      ${x.mode === 'part' ? cond(i, 'cond', x.cond, 'Part des points où…') + `<label><input type="checkbox" ${A} data-f="baseon"${x.base.on ? ' checked' : ''}> Seulement parmi une partie des points</label>${x.base.on ? cond(i, 'base', x.base, 'Parmi ceux où…') : ''}` : ''}
       ${x.mode === 'compte' ? cond(i, 'cond', x.cond, 'Compter seulement ceux où… (facultatif)') : ''}
       ${x.mode === 'somme' || x.mode === 'moyenne' ? `<label>Colonne ${selCol(`${A} data-f="col"`, x.col)}</label>` : ''}
-      <label>Unité affichée (facultatif) <input type="text" ${A} data-f="unite" value="${esc(x.unite)}" placeholder="ex. contrôles, €" style="max-width:140px"></label>
+      <label>Unité affichée (facultatif) <input type="text" ${A} data-f="unite" value="${esc(x.unite)}" placeholder="ex. kg, €" style="max-width:140px"></label>
       ${pct ? `<div class="rg-sous">Couleur de la barre selon le résultat</div>${x.paliers.map((q, j) => `<div class="rg-l2">${j === 0 ? `<span class="pal-lab">${x.paliers[1] ? 'Moins de ' + x.paliers[1].de + ' %' : 'Toutes les valeurs'}</span>` : `<span class="pal-lab">À partir de</span><input type="number" min="0" max="1000" data-a="pp" data-i="${i}" data-j="${j}" data-f="de" value="${q.de}" style="width:70px" aria-label="Seuil"> %`}<input type="color" data-a="pp" data-i="${i}" data-j="${j}" data-f="couleur" value="${q.couleur}" aria-label="Couleur">${j > 0 ? btn('pp-del', `data-i="${i}" data-j="${j}"`, '✕', 'Retirer ce palier') : ''}</div>`).join('')}${btn('pp-add', `data-i="${i}"`, '+ palier de couleur')}`
         : `<label>Couleur des barres <input type="color" ${A} data-f="couleur" value="${x.couleur}"></label>`}`); }).join('')}
     <button type="button" class="rg-ajout" data-a="pi-add">+ Ajouter un indicateur</button>`;
@@ -1271,7 +1409,7 @@ function blocBarre() {
 function blocEntete(k) {
   const h = cfg.entetes[k], D = `data-a="eh" data-h="${k}"`, opts_ = (val, vide) => `<option value="">${vide}</option>` + allCols.map(c => `<option value="${esc(c)}"${c === val ? ' selected' : ''}>${esc(libel(c))}</option>`).join('');
   return `<section><h3>En-tête ${k === 'popup' ? 'du popup' : 'de la fiche'}</h3>
-    <label>Titre <select ${D} data-f="titre">${opts_(h.titre, 'Nom de l’établissement')}</select></label>
+    <label>Titre <select ${D} data-f="titre">${opts_(h.titre, 'Nom du point')}</select></label>
     <label>Sous-titre <select ${D} data-f="sous">${opts_(h.sous, 'Aucun')}</select></label>
     <label><input type="checkbox" ${D} data-f="etiq"${h.etiq ? ' checked' : ''}> Afficher l’étiquette de la règle d’affichage des points</label>
     <label>Fond <select ${D} data-f="fond"><option value="neutre"${h.fond === 'neutre' ? ' selected' : ''}>Gris clair</option><option value="point"${h.fond === 'point' ? ' selected' : ''}>Couleur du point</option><option value="perso"${h.fond === 'perso' ? ' selected' : ''}>Couleur personnalisée</option></select>
@@ -1281,16 +1419,16 @@ function blocEntete(k) {
 }
 function contenuOnglet() {
   if (onglet === 'points') return `<section><h3>Style par défaut des points</h3><div class="rg-l2"><label>Couleur <input type="color" data-a="defc" value="${cfg.defaut.couleur}"></label><label>Forme ${selForme('data-a="deff"', cfg.defaut.forme)}</label><label>Bordure <input type="color" data-a="defbc" value="${cfg.defaut.bordc}" aria-label="Couleur de la bordure"> <input type="number" min="0" max="8" data-a="defbe" value="${cfg.defaut.borde}" style="width:56px" aria-label="Épaisseur de la bordure"> px</label></div></section>
-    <p class="vide" style="font-size:12px">Chaque règle s’applique aux points qui remplissent toutes ses conditions. Pour la couleur, la forme et le contenu, la première règle qui en définit une l’emporte.</p>
-    ${cfg.regles.map(carteRegle).join('')}<button type="button" class="rg-ajout" data-a="radd">+ Ajouter une règle</button>`;
-  if (onglet === 'popup') return blocEntete('popup') + `<section><h3>Colonnes du popup (clic sur un point)</h3>${blocListe('p')}</section>`;
-  if (onglet === 'fiche') return blocFicheSections();
+    <section><h3>Règles d’affichage des points</h3><p class="vide" style="font-size:12px;margin:0 0 4px">Chaque règle applique un style (couleur, forme, bordure, contenu, bulle, signal pulsé) aux points qui remplissent toutes ses conditions. Pour la couleur, la forme et le contenu, la première règle qui en définit une l’emporte.</p>
+    ${cfg.regles.map(carteRegle).join('')}<button type="button" class="rg-ajout" data-a="radd">+ Ajouter une règle</button></section>`;
+  if (onglet === 'popup') return optStyleGrist() + blocEntete('popup') + `<section><h3>Colonnes du popup (clic sur un point)</h3>${blocListe('p')}</section>`;
+  if (onglet === 'fiche') return optStyleGrist() + blocFicheSections();
   if (onglet === 'barre') return blocBarre();
   if (onglet === 'filtres') return blocFiltres();
   if (onglet === 'messages') return blocMessages();
   if (onglet === 'prog') return blocProg();
   const sl = (n, ch) => `<select data-o="${n}">${ch.map(c => `<option${opt(n, ch[0]) === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
-  const elts = [['q', 'Recherche par nom'], ['filtres', 'Filtres'], ['compteurs', 'Compteurs'], ['liste', 'Liste des établissements'], ['tout', 'Bouton « Voir tous les points »'], ['legende', 'Légende'], ['iti', 'Bouton « Préparer un itinéraire »'], ['commune', 'Recherche de commune (en haut à droite de la carte)']];
+  const elts = [['q', 'Recherche par nom'], ['filtres', 'Filtres'], ['compteurs', 'Compteurs'], ['liste', 'Liste des points'], ['tout', 'Bouton « Voir tous les points »'], ['legende', 'Légende'], ['iti', 'Bouton « Préparer un itinéraire »'], ['commune', 'Recherche de commune (en haut à droite de la carte)']];
   return `<section><h3>Éléments du panneau de gauche</h3><p class="vide" style="font-size:12px;margin:0 0 4px">⚙ pour régler un élément (texte, icône, aide), ✕ pour le retirer, « Ajouter un élément » pour en remettre un.</p>
     ${blocElementsGauche()}</section>
     <section><h3>Aides au survol</h3>
@@ -1299,18 +1437,19 @@ function contenuOnglet() {
     <label>Fond de la bulle <input type="color" data-o="aide_fond" value="${hex(opt('aide_fond', '')) || '#1d2733'}"> Texte <input type="color" data-o="aide_coul" value="${hex(opt('aide_coul', '')) || '#ffffff'}"></label>
     <p class="vide" style="font-size:12px;margin:0">Le texte de l’aide de chaque bouton se saisit dans « Éléments du panneau de gauche » ci-dessous, et dans l’onglet Barre de boutons pour les boutons de la barre.</p></section>
     <section><h3>Apparence</h3>
+    ${optStyleGrist()}
     <label>Police d’écriture ${sl('police', Object.keys(POLICES))}</label>
-    <p class="vide" style="font-size:12px;margin:0 0 4px">La police Marianne s’affiche si elle est installée sur le poste, ou si ses fichiers sont placés dans le dossier lib/fonts du widget.</p>
+    <p class="vide" style="font-size:12px;margin:0 0 4px">Police utilisée pour tous les textes du widget.</p>
     <label>Emplacement de la recherche de commune ${sl('pos_commune', POS_COMMUNE)}</label>
     <label>Largeur du panneau de gauche <input type="number" min="220" max="520" data-o="largeur_gauche" value="${+opt('largeur_gauche', 300)}"> px</label></section>
-    ${blocEtiquette('liste', 'Étiquette devant le nom (liste des établissements)')}
+    ${blocEtiquette('liste', 'Étiquette devant le nom (liste des points)')}
     ${blocEtiquette('legende', 'Étiquette de la légende')}
     ${blocSauvegarde()}
         <section><h3>Tailles</h3>
     <label>Hauteur maximale des listes dépliées du panneau de gauche <input type="number" min="0" max="1500" data-o="liste_max" data-zero="1" value="${+opt('liste_max', 0) || ''}" placeholder="aucune limite" style="width:120px"> px</label>
     <label>Largeur du popup <input type="number" min="220" max="640" data-o="larg_popup" value="${+opt('larg_popup', 300)}"> px</label>
     <label>Hauteur maximale du contenu du popup <input type="number" min="120" max="700" data-o="haut_popup" value="${+opt('haut_popup', 260)}"> px</label>
-    <label>Largeur de la fiche établissement <input type="number" min="320" max="760" data-o="larg_fiche" value="${+opt('larg_fiche', 400)}"> px</label>
+    <label>Largeur de la fiche <input type="number" min="320" max="760" data-o="larg_fiche" value="${+opt('larg_fiche', 400)}"> px</label>
     <label>Taille du texte de la légende <input type="number" min="10" max="22" data-o="taille_legende" value="${+opt('taille_legende', 13)}"> px</label>
     <label>Largeur de la fenêtre de légende (barre de boutons) <input type="number" min="200" max="560" data-o="larg_pop_leg" value="${+opt('larg_pop_leg', 260)}"> px</label>
     <label>Hauteur maximale de la fenêtre de légende <input type="number" min="120" max="700" data-o="haut_pop_leg" value="${+opt('haut_pop_leg', 360)}"> px</label></section>
@@ -1324,21 +1463,20 @@ function contenuOnglet() {
     <label>Taille du texte de la fiche <input type="number" min="10" max="24" data-o="taille_fiche" value="${+opt('taille_fiche', 14)}"> px</label></section>`;
 }
 const AIDES_ONGLET = {
-  points:'Une règle applique un style (couleur, forme, bordure, contenu, bulle, signal pulsé) aux points qui remplissent ses conditions. Exemple : « Niveau de risque est égal à Critique » → rouge.',
-  popup:'Choisissez les colonnes affichées au clic sur un point. Exemple : commune, statut, date du dernier contrôle. Cliquez sur une colonne pour régler son style.',
-  fiche:'La fiche s’ouvre avec « Voir la fiche complète ». Créez des sections pliables : liste de colonnes, ou mini tableau (par exemple un historique par année).',
-  filtres:'La barre de recherche et les filtres du panneau de gauche. Exemple : un filtre « Département » à choix multiples et un curseur oui/non sur « Est-ce un cible ? ».',
-  messages:'Bandeaux temporaires sur la carte. Exemple : « Maintenance vendredi », 10 secondes, une fois par session.',
-  prog:'Barres d’avancement par administration ou unité. Exemple : contrôles réalisés sur contrôles attendus, regroupés par Administration.',
-  barre:'Les boutons de la barre sur la carte. Un bouton placé ici disparaît du panneau de gauche.',
-  general:'Apparence et contenu du panneau de gauche, tailles, textes, aides, et sauvegarde de la configuration.' };
-const avertOnglet = () => ({ points: cfg.regles.filter(r => !regleActive(r)).length, filtres: cfg.filtres.filter(f => !f.c).length, prog: cfg.prog.inds.filter(warnInd).length, messages: cfg.messages.filter(m => m.actif && !m.texte.trim()).length, fiche: cfg.sections.filter(x => x.type === 'tableau' ? !x.tab.rows.length : !x.cols.length).length });
+  points:'',
+  popup:'Paramétrage des colonnes qu’on veut afficher dans le popup qui s’ouvre en cliquant sur un point.',
+  fiche:'La fiche complète s’ouvre depuis le popup. Elle est composée de sections pliables : liste de colonnes, mini tableau, ou tableau de lignes d’une autre table.',
+  filtres:'Paramétrage de la barre de recherche et des filtres du panneau de gauche : liste à cases, liste déroulante, case ou bouton oui/non, curseur.',
+  messages:'Bandeaux temporaires affichés sur la carte, avec une durée, une répétition et des dates facultatives.',
+  prog:'Barres d’avancement calculées à partir des colonnes de votre choix, éventuellement regroupées selon une colonne.',
+  barre:'Choisissez les boutons affichés directement sur la carte (zoom, légende, itinéraire…) et leur ordre. Un bouton placé sur la carte n’apparaît plus dans le panneau de gauche.',
+  general:'Apparence et contenu du panneau de gauche, tailles, textes, aides, et export de la configuration.' }; const avertOnglet = () => ({ points: cfg.regles.filter(r => !regleActive(r)).length, filtres: cfg.filtres.filter(f => !f.c).length, prog: cfg.prog.inds.filter(warnInd).length, messages: cfg.messages.filter(m => m.actif && !m.texte.trim()).length, fiche: cfg.sections.filter(x => x.type === 'lie' ? (!x.lie.table || !x.lie.cle || !x.lie.cols.some(c => c.c)) : x.type === 'tableau' ? !x.tab.rows.length : !x.cols.length).length });
 function majCfgClasses() { const b = document.body; if (b && b.classList) b.classList.toggle('cfg-large', modal.classList.contains('ouvert') && !modal.classList.contains('reduit')); }
 function dessiner() {
   const y = (modal.querySelector('.rg-corps') || {}).scrollTop || 0, av = avertOnglet();
   modal.innerHTML = `<div class="rg-onglet-reduit"><button type="button" data-a="reduire" aria-label="Rouvrir la configuration">⚙ Réglages ▸</button></div><div class="rg-boite" role="dialog" aria-label="Configurer le widget"><div class="rg-tete"><h2>Configurer le widget</h2><span id="rg-etat" class="rg-etat">${esc(etatSauv)}</span>${btn('reduire', '', '◂ Réduire', 'Réduire le volet pour voir toute la carte')}${btn('fermer', '', 'Fermer')}</div>
     <div class="rg-onglets" role="tablist">${[['points', 'Affichage des points'], ['popup', 'Popup'], ['fiche', 'Fiche'], ['filtres', 'Filtres'], ['messages', 'Messages'], ['prog', 'Progression'], ['barre', 'Barre de boutons'], ['general', 'Général']].map(([k, t]) => `<button type="button" role="tab" data-a="onglet" data-t="${k}" aria-pressed="${onglet === k}" aria-selected="${onglet === k}">${t}${av[k] ? ` <span class="warn" title="Réglages incomplets">⚠ ${av[k]}</span>` : ''}</button>`).join('')}</div>
-    <div class="rg-corps">${erreurAcces ? `<p style="color:#c1121f;font-size:13px">Impossible de lire toutes les colonnes : vérifiez que le widget est en « Accès complet » dans le panneau de droite de Grist.</p>` : ''}${picker ? blocPicker() : `<p class="rg-aide">${AIDES_ONGLET[onglet]}</p>` + contenuOnglet() + `<div class="rg-pied-onglet"><button type="button" data-a="reset" class="rg-danger">Réinitialiser cet onglet</button></div>`}</div></div>`;
+    <div class="rg-corps">${erreurAcces ? `<p style="color:#c1121f;font-size:13px">Impossible de lire toutes les colonnes : vérifiez que le widget est en « Accès complet » dans le panneau de droite de Grist.</p>` : ''}${picker ? blocPicker() : (AIDES_ONGLET[onglet] ? `<p class="rg-aide">${AIDES_ONGLET[onglet]}</p>` : '') + contenuOnglet() + `<div class="rg-pied-onglet"><button type="button" data-a="reset" class="rg-danger">Réinitialiser cet onglet</button></div>`}</div></div>`;
   modal.querySelector('.rg-corps').scrollTop = y;
 }
 function fermerReglages() { modal.classList.remove('ouvert'); picker = null; majCfgClasses(); msgSig = ''; planifierMessages(); }
@@ -1346,14 +1484,21 @@ function bandeau(texte, duree) {   // petit message d'information sur la carte (
   fermerMessage(true); msgEl.style.background = '#c1121f'; msgEl.style.color = '#fff'; msgEl.className = 'ouvert haut'; msgEl.querySelector('.txt').textContent = texte;
   clearTimeout(msgFin); msgFin = setTimeout(() => fermerMessage(true), duree || 7000);
 }
-async function demanderConfig() {   // c'est Grist qui décide : le volet ne s'ouvre que si l'enregistrement des réglages est accepté
+function ecrireEtConfirmer(delai) {   // écrit les réglages, puis attend que Grist les renvoie : preuve que l'enregistrement a vraiment eu lieu
+  const ts = Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+  opts._maj = ts; opts.cfg = cfg;
+  const prec = attente;   // écriture précédente encore en attente : elle partage le résultat de celle-ci (évite un faux « non enregistré »)
+  return new Promise(res => {
+    let t = null; const fin = ok => { clearTimeout(t); if (attente && attente.ts === ts) attente = null; res(ok); if (prec && prec.fin) prec.fin(ok); };
+    t = setTimeout(() => fin(false), delai || 4000); attente = { ts, ok: () => fin(true), fin };
+    Promise.resolve().then(() => grist.setOptions ? grist.setOptions(opts) : grist.setOption('cfg', cfg)).catch(() => fin(false));
+  });
+}
+async function demanderConfig() {   // c'est Grist qui décide : le volet ne s'ouvre que si l'enregistrement est confirmé
   if (modal.classList.contains('ouvert')) { modal.classList.remove('reduit'); majCfgClasses(); return; }
   if (!optionsChargees) { bandeau('Les réglages se chargent : réessayez dans un instant.', 4000); return; }
-  try {
-    opts.cfg = cfg;   // même contenu qu'avant : aucun changement réel, seulement un test du droit de modification
-    await Promise.resolve(grist.setOptions ? grist.setOptions(opts) : grist.setOption('cfg', cfg));
-  } catch (e) {
-    bandeau('La configuration est réservée aux personnes autorisées à modifier la structure du document.' + (e && e.message ? ' (' + e.message + ')' : ''), 9000); return;
+  if (!/[?&]config=force/.test(location.search) && !(await ecrireEtConfirmer())) {
+    bandeau('La configuration est réservée aux personnes autorisées à modifier la structure du document : Grist n’a pas confirmé l’enregistrement.', 9000); return;
   }
   ouvrirReglages();
 }
@@ -1361,13 +1506,9 @@ function ouvrirReglages() { dessiner(); modal.classList.add('ouvert'); majCfgCla
 function etat(t) { etatSauv = t; const e = document.getElementById('rg-etat'); if (e) e.textContent = t; }
 function enregistrer() {
   clearTimeout(minuteur); etat('Enregistrement…');
-  minuteur = setTimeout(() => {
-    opts.cfg = cfg;
-    Promise.resolve().then(() => grist.setOptions ? grist.setOptions(opts) : grist.setOption('cfg', cfg))
-      .then(() => etat('✓ Enregistré')).catch(e => etat('⚠ Non enregistré : ' + ((e && e.message) || e)));
-  }, 300);
+  minuteur = setTimeout(() => { ecrireEtConfirmer().then(ok => etat(ok ? '✓ Enregistré' : '⚠ Non enregistré : Grist n’a pas confirmé (droits insuffisants ?)')); }, 300);
 }
-function sauver(redessiner = true) { enregistrer(); construire(); if (redessiner) dessiner(); }
+function sauver(redessiner = true) { enregistrer(); construire(); if (redessiner) dessiner(); chargerLieesManquantes(); }
 modal.addEventListener('click', e => {
   if (e.target === modal) { fermerReglages(); return; }
   const b = e.target.closest('button[data-a]'); if (!b) return;
@@ -1385,7 +1526,7 @@ modal.addEventListener('click', e => {
     case 'pk-add': { const l = listeDe(picker.g); picker.sel.forEach(c => { if (!l.some(x => x.c === c)) l.push({ c, nom:'', gn:false, gi:false, vg:false, vi:false, vb:false, ta:'', cn:'', cw:'', o:false }); }); picker = null; break; }
     case 'pk-all': { const it = [...modal.querySelectorAll('.pk-item')].filter(x => x.style.display !== 'none'), tout = it.length && it.every(x => x.querySelector('input').checked); it.forEach(x => { const c = x.querySelector('input'); c.checked = !tout; if (tout) picker.sel.delete(c.dataset.c); else picker.sel.add(c.dataset.c); }); const n = modal.querySelector('#pk-n'); if (n) n.textContent = picker.sel.size; return; }
     case 'rdup': cfg.regles.splice(r + 1, 0, JSON.parse(JSON.stringify(cfg.regles[r]))); break;
-    case 'exp': { const o = {}; Object.keys(opts).forEach(x => { if (x !== 'cfg') o[x] = opts[x]; }); const ta = modal.querySelector('#rg-exp'); ta.value = JSON.stringify({ cifi:'configuration', version:VERSION, cfg, options:o }); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { /* copie manuelle */ } etat(ok ? '✓ Configuration exportée et copiée' : 'Configuration exportée : copiez le texte'); return; }
+    case 'exp': { const o = {}; Object.keys(opts).forEach(x => { if (x !== 'cfg' && x !== '_maj') o[x] = opts[x]; }); const ta = modal.querySelector('#rg-exp'); ta.value = JSON.stringify({ cifi:'configuration', version:VERSION, cfg, options:o }); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { /* copie manuelle */ } etat(ok ? '✓ Configuration exportée et copiée' : 'Configuration exportée : copiez le texte'); return; }
     case 'imp': { let o; try { o = JSON.parse(modal.querySelector('#rg-imp').value); } catch (e) { etat('⚠ Texte non reconnu'); return; } if (!o || o.cifi !== 'configuration' || !o.cfg) { etat('⚠ Ce texte n’est pas une configuration CIFI'); return; } if (!sure()) return; cfg = norm(o.cfg); Object.keys(opts).filter(x => x !== 'cfg').forEach(x => { delete opts[x]; }); Object.assign(opts, o.options || {}); break; }
     case 'reset': { if (!sure()) return; const o = onglet;
       if (o === 'points') { cfg.regles = []; cfg.defaut = nDef({}); } else if (o === 'popup') { cfg.popup = []; cfg.entetes.popup = nEnt({}); } else if (o === 'fiche') { cfg.sections = []; cfg.entetes.fiche = nEnt({}); }
@@ -1398,7 +1539,9 @@ modal.addEventListener('click', e => {
     case 'sup': case 'sdown': deplacer(cfg.sections, +g, a === 'sup' ? -1 : 1); break;
     case 'sdel': if (!sure()) return; cfg.sections.splice(+g, 1); break;
     case 'sadd': cfg.sections.push(nSec({ nom:'Nouvelle section' })); break;
-    case 'sadd-t': { const rows = [2025, 2024, 2023, 2022].map(y => ({ cells:[{ c:'', v:String(y) }, { c:allCols.find(x => new RegExp('contr.les?.*' + y, 'i').test(libel(x))) || '', v:'' }, { c:'', v:'' }] })); cfg.sections.push(nSec({ nom:'Historique des contrôles', type:'tableau', tab:{ heads:['Année', 'Contrôles', 'Remarques'], vides:true, rows } })); break; }
+    case 'lc-add': { const l = cfg.sections[+g].lie.cols; l.push({ c:'', nom:'' }); elOuverts.add(`lc:${g}:${l.length - 1}`); break; }
+    case 'lc-del': cfg.sections[+g].lie.cols.splice(+b.dataset.j, 1); break;
+    case 'lc-up': case 'lc-down': deplacer(cfg.sections[+g].lie.cols, +b.dataset.j, a === 'lc-up' ? -1 : 1); break;
     case 'tb-hadd': { const T = cfg.sections[+g].tab; T.heads.push('Colonne ' + (T.heads.length + 1)); T.rows.forEach(r => r.cells.push({ c:'', v:'' })); break; }
     case 'tb-hdel': { const T = cfg.sections[+g].tab, j = +b.dataset.j; T.heads.splice(j, 1); T.rows.forEach(r => r.cells.splice(j, 1)); break; }
     case 'tb-radd': { const T = cfg.sections[+g].tab; T.rows.push({ cells:T.heads.map(() => ({ c:'', v:'' })) }); break; }
@@ -1471,10 +1614,14 @@ modal.addEventListener('change', e => {
     case 'eh-txt-on': cfg.entetes[t.dataset.h].txtc = t.checked ? '#1d2733' : ''; break;
     case 'ms': { const M = cfg.messages[+t.dataset.i], f = t.dataset.f; if (M) M[f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(+t.min, Math.min(+t.max, +t.value || 0)) : t.value; break; }
     case 'pk-chk': { if (t.checked) picker.sel.add(t.dataset.c); else picker.sel.delete(t.dataset.c); const n = modal.querySelector('#pk-n'); if (n) n.textContent = picker.sel.size; return; }
-    case 'sec-type': cfg.sections[+t.dataset.g].type = t.value; break;
+    case 'lie': { const L = cfg.sections[+t.dataset.g].lie, f = t.dataset.f;
+      if (f === 'afficherVide' || f === 'grpHide' || f === 'gs') L[f] = t.checked; else if (f === 'annee' || f === 'max' || f === 'taille' || f === 'tailleTh') L[f] = Math.max(0, +t.value || 0);
+      else { L[f] = t.value; if (f === 'table') { const a = autoLie(t.value); L.cle = a.cle; L.cle2 = a.cle2; L.dateCol = a.dateCol; L.cols = a.cols; L.triCol = ''; } } break; }
+    case 'lc': { const X = cfg.sections[+t.dataset.g].lie.cols[+t.dataset.j]; if (X) X[t.dataset.f] = t.value; break; }
+    case 'sec-type': { const S = cfg.sections[+t.dataset.g]; S.type = t.value; if (t.value === 'lie' && !S.lie.table) S.lie = autoLie(); if (t.value === 'tableau' && !S.tab.heads.length) S.tab = nTab({ heads:['Colonne 1', 'Colonne 2'], rows:[{ cells:[{}, {}] }] }); break; }
     case 'tb-h': cfg.sections[+t.dataset.g].tab.heads[+t.dataset.j] = t.value; break;
     case 'tb-c': { const C = cfg.sections[+t.dataset.g].tab.rows[+t.dataset.k].cells[+t.dataset.j]; C[t.dataset.f] = t.value; break; }
-    case 'tb': cfg.sections[+t.dataset.g].tab[t.dataset.f] = t.checked; break;
+    case 'tb': { const T = cfg.sections[+t.dataset.g].tab, f = t.dataset.f; T[f] = t.type === 'checkbox' ? t.checked : t.tagName === 'SELECT' ? t.value : Math.max(0, Math.min(30, +t.value || 0)); break; }
     case 'rch': cfg.recherche[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; break;
     case 'rc': { const X = cfg.recherche.cols[+t.dataset.i]; if (X) X[t.dataset.f] = t.value; break; }
     case 'fl': { const F = cfg.filtres[+t.dataset.i], f = t.dataset.f; if (F) { if (f === 'fond-on') F.fond = t.checked ? '#fff3bf' : ''; else if (f === 'coul-on') F.coul = t.checked ? '#1d2733' : ''; else if (f === 'fonte') { F.gras = t.value.includes('g'); F.ital = t.value.includes('i'); } else if (f === 'bouton') F.bouton = t.value === '1'; else if (t.type === 'checkbox') F[f] = t.checked; else F[f] = t.value; } break; }
@@ -1487,6 +1634,7 @@ modal.addEventListener('change', e => {
     case 'bb-b': { const x = cfg.barre.boutons.find(y => y.id === t.dataset.e); if (x) x[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; break; }
     case 'et': { const E = cfg.etiquettes[t.dataset.ek], f = t.dataset.f; if (t.type === 'number') { const n = t.value === '' ? +t.defaultValue : +t.value; E[f] = Math.max(+t.min, Math.min(+t.max, isNaN(n) ? +t.min : n)); } else E[f] = t.value; break; }
     case 'nom': cfg.sections[+g].nom = t.value; break;
+    case 'sdesc': cfg.sections[+g].desc = t.value; break;
     case 'defc': cfg.defaut.couleur = t.value; break;
     case 'deff': cfg.defaut.forme = t.value; break;
     case 'rnom': R.nom = t.value; break;
@@ -1502,7 +1650,7 @@ modal.addEventListener('change', e => {
     case 'cv': R.si[k].v = t.value; break;
     default: return;
   }
-  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'rpu-on', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond') || (a === 'et' && ['couleur', 'contenu', 'bord'].includes(t.dataset.f)) || (a === 'pi' && ['mode', 'baseon'].includes(t.dataset.f)) || (a === 'pc' && t.dataset.f === 'op') || (a === 'fl' && ['type', 'tous', 'fond-on', 'coul-on'].includes(t.dataset.f)) || (a === 'st' && /-on$/.test(t.dataset.f)) || (a === 'ms' && ['style', 'rep'].includes(t.dataset.f)) || a === 'sec-type' || a === 'tb-h' || (a === 'tb-c' && t.dataset.f === 'c'));
+  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'rpu-on', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond') || (a === 'et' && ['couleur', 'contenu', 'bord'].includes(t.dataset.f)) || (a === 'pi' && ['mode', 'baseon'].includes(t.dataset.f)) || (a === 'pc' && t.dataset.f === 'op') || (a === 'fl' && ['type', 'tous', 'fond-on', 'coul-on'].includes(t.dataset.f)) || (a === 'st' && /-on$/.test(t.dataset.f)) || (a === 'ms' && ['style', 'rep'].includes(t.dataset.f)) || a === 'sec-type' || a === 'tb-h' || (a === 'lie' && ['table', 'mode', 'afficherVide', 'grp'].includes(t.dataset.f)) || (a === 'tb-c' && t.dataset.f === 'c'));
 });
 modal.addEventListener('input', e => { const t = e.target; if (t.dataset && t.dataset.a === 'pk-q' && picker) { picker.q = t.value; const q = sansAccent(t.value); modal.querySelectorAll('.pk-item').forEach(x => { x.style.display = !q || x.dataset.lib.includes(q) ? '' : 'none'; }); } });
 modal.addEventListener('toggle', e => { const d = e.target; if (!d.matches || !d.matches('details.gen')) return; if (d.dataset.ok === 'el') { if (d.open) elOuverts.add(d.dataset.e); else elOuverts.delete(d.dataset.e); return; } const i = +d.dataset.i, k = d.dataset.ok, o = k === 'col' ? listeDe(d.dataset.g)[i] : k === 'sec' ? cfg.sections[i] : k === 'fl' ? cfg.filtres[i] : k === 'ms' ? cfg.messages[i] : k === 'pi' ? cfg.prog.inds[i] : null; if (o) o.o = d.open; }, true);
@@ -1512,7 +1660,7 @@ function boutonSecours() {
   const z = document.getElementById('cfg-secours'); if (!z || !peutModifier) return;
   const b = document.createElement('button'); b.type = 'button'; b.className = 'link'; b.textContent = '⚙ Configurer le widget'; b.addEventListener('click', demanderConfig); z.appendChild(b);
 }
-if (/[?&]config=1/.test(location.search)) boutonSecours();   // secours : ajouter ?config=1 à l'adresse du widget
+if (/[?&]config=(1|force)/.test(location.search)) boutonSecours();   // secours : ajouter ?config=1 à l'adresse du widget
 </script>
 </body>
 </html>
