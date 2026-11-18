@@ -120,6 +120,11 @@
   #filtres summary { padding:5px 8px; cursor:pointer; font-size:13px; }
   #filtres details label { display:block; margin:0; padding:2px 10px; color:var(--ink); font-size:13px; }
   #filtres .liste { max-height:160px; overflow:auto; padding-bottom:4px; }
+  /* filtre à choix multiples présenté comme une liste déroulante */
+  #filtres details.flt-d.menu { position:relative; }
+  #filtres details.flt-d.menu > summary { border:1px solid var(--line); background:#fff; padding:5px 8px; cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:6px; }
+  #filtres details.flt-d.menu > summary::after { content:'▾'; }
+  #filtres details.flt-d.menu > .liste { position:absolute; left:0; right:0; z-index:5; max-height:220px; background:#fff; border:1px solid var(--line); box-shadow:0 2px 8px #0002; padding:4px 8px; }
   .rg-corps label input[type=text] { width:100%; margin:4px 0 0; box-sizing:border-box; }
   .leaflet-top.leaflet-left .panel { width:250px; box-sizing:border-box; max-height:calc(100vh - 24px); overflow:auto; }
   .panel input[type=search] { width:100%; }
@@ -262,7 +267,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '85';
+const VERSION = '86';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -341,7 +346,7 @@ const nMsg = m => { m = m || {}; const d = x => /^\d{4}-\d{2}-\d{2}$/.test(x || 
 const nRech = r => { r = r || {}; return { info:String(r.info || ''), nom:r.nom !== false, mode:r.mode === 'choix' ? 'choix' : 'toutes', cols:(r.cols || []).map(x => ({ c:String((x && x.c) || ''), nom:String((x && x.nom) || '') })) }; };
 const nSt = x => { x = x || {}; return { coul:hex(x.coul), fond:hex(x.fond), taille:Math.max(0, Math.min(40, +x.taille || 0)), gras:!!x.gras, ital:!!x.ital }; };
 const ICO_DEF = { iti:'🧭', prog:'📊' };
-const nFiltre = f => { f = f || {}; return { tous:f.tous !== false, tousTxt:String(f.tousTxt || ''), bouton:f.bouton === true, aide:String(f.aide || ''), hors:f.hors === true, o:f.o === true, fond:hex(f.fond), coul:hex(f.coul), gras:!!f.gras, ital:f.ital === true, c:String(f.c || ''), nom:String(f.nom || ''), type:['multi', 'unique', 'oui', 'curseur'].includes(f.type) ? f.type : 'multi', oui:String(f.oui || 'Oui'), non:String(f.non || 'Non') }; };
+const nFiltre = f => { f = f || {}; return { menu:f.menu === true, tous:f.tous !== false, tousTxt:String(f.tousTxt || ''), bouton:f.bouton === true, aide:String(f.aide || ''), hors:f.hors === true, o:f.o === true, fond:hex(f.fond), coul:hex(f.coul), gras:!!f.gras, ital:f.ital === true, c:String(f.c || ''), nom:String(f.nom || ''), type:['multi', 'unique', 'oui', 'curseur'].includes(f.type) ? f.type : 'multi', oui:String(f.oui || 'Oui'), non:String(f.non || 'Non') }; };
 const nCond = c => ({ c:String((c && c.c) || ''), op:(c && c.op) || '=', v:String((c && c.v) ?? ''), on:!!(c && c.on) });
 const nInd = i => {
   i = i || {};
@@ -535,7 +540,7 @@ haut.onAdd = () => {
     if (t === 'unique') filtreSel[c] = e.target.value ? [e.target.value] : [];
     else if (t === 'oui') filtreSel[c] = e.target.checked ? ['__oui__'] : [];
     else if (t === 'curseur') { const v = +e.target.value; filtreSel[c] = v === 1 ? ['__oui__'] : v === 2 ? ['__non__'] : []; e.target.parentNode.querySelectorAll('.cur-l span').forEach((x, i) => x.classList.toggle('on', i === v)); }
-    else { const det = e.target.closest('details'); filtreSel[c] = [...det.querySelectorAll('input:checked')].map(x => x.value); const df = filtresDefs.find(f => f.c === c); det.querySelector('summary').textContent = ((df && df.nom) || libel(c)) + (filtreSel[c].length ? ` (${filtreSel[c].length})` : ''); }
+    else { const det = e.target.closest('details'); filtreSel[c] = [...det.querySelectorAll('input:checked')].map(x => x.value); const df = filtresDefs.find(f => f.c === c); det.querySelector('summary').textContent = titreMulti(df || { c }, filtreSel[c]); }
     appliquerFiltres();
   });
   d.querySelector('#filtres').addEventListener('click', e => {   // filtre « oui » affiché comme bouton : un clic active ou désactive
@@ -545,6 +550,9 @@ haut.onAdd = () => {
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.textContent = (on ? '✓ ' : '') + b.dataset.nom; appliquerFiltres();
   });
   d.querySelector('#filtres').addEventListener('toggle', e => { const t = e.target; if (!t.matches) return; if (t.id === 'filtres-sec') filtresSecOuvert = t.open; else if (t.dataset && t.dataset.c) etatFiltres.set(t.dataset.c, t.open); }, true);
+  const fermerMenus = (hors) => document.querySelectorAll('#filtres details.flt-d.menu[open]').forEach(m => { if (!hors || !m.contains(hors)) m.open = false; });
+  document.addEventListener('click', e => fermerMenus(e.target));   // un clic ailleurs ferme les listes déroulantes
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerMenus(null); });
   d.querySelector('#filtres').addEventListener('input', e => { if (e.target.dataset.t === 'curseur') e.target.dispatchEvent(new Event('change', { bubbles:true })); });
   d.querySelector('#liste-btn').addEventListener('click', () => { listeOuverte = !listeOuverte; setListe(listeOuverte); });
   d.querySelector('#liste').addEventListener('click', e => { const b = e.target.closest('button[data-id]'); if (b) allerA(Number(b.dataset.id)); });
@@ -632,6 +640,12 @@ function majListe() {
   document.getElementById('liste').innerHTML = l.length ? l.map(m => `<button type="button" data-id="${Number(m._cifi.id)}">${devant(m._cifi)}${esc(m._cifi.nom || 'Sans nom')}</button>`).join('') : '<p class="vide" style="margin:8px">Aucun point.</p>';
 }
 const fs = f => { const a = (coul(f.coul) ? `color:${coul(f.coul)};` : '') + (coul(f.fond) ? `background:${coul(f.fond)};padding:2px 8px;border-radius:4px;width:fit-content;` : '') + (f.gras ? 'font-weight:700;' : '') + (f.ital ? 'font-style:italic;' : ''); return (a ? ` style="${a}"` : '') + (f.aide ? ` data-aide="${esc(f.aide)}"` : ''); };
+// Titre d'un filtre à choix multiples : « Nom (2) », ou « Nom : valeur » / « Nom : 2 sélectionnés » en liste déroulante.
+function titreMulti(f, choix) {
+  const nom = f.nom || libel(f.c);
+  if (!choix.length) return nom;
+  return f.menu ? `${nom} : ${choix.length === 1 ? choix[0] : choix.length + ' sélectionnés'}` : `${nom} (${choix.length})`;
+}
 function filtreHtml(f) {
   const c = f.c, nom = f.nom || libel(c), sl = new Set(filtreSel[c] || []);
   if (f.type === 'oui' && f.bouton) { const on = sl.size > 0; return `<button type="button" class="flt-btn${on ? ' on' : ''}" data-c="${esc(c)}" data-nom="${esc(nom)}" aria-pressed="${on}"${fs(f)}>${on ? '✓ ' : ''}${esc(nom)}</button>`; }
@@ -640,7 +654,7 @@ function filtreHtml(f) {
   const vals = [...new Set([...marqueurs.values()].map(x => x._cifi.fv[c]))].filter(v => v !== undefined).sort((a, b) => String(a).localeCompare(String(b), 'fr')).slice(0, 1000);
   if (f.type === 'unique') return `<label class="flt"${fs(f)}>${esc(nom)}<select data-c="${esc(c)}" data-t="unique">${f.tous !== false ? `<option value="">${esc(f.tousTxt || 'Tous')}</option>` : ''}${vals.map(v => `<option${sl.has(v) ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label>`;
   const ouv = etatFiltres.has(c) ? etatFiltres.get(c) : opt('filtres_sous_ouvert', false) === true;
-  return `<details class="flt-d" data-c="${esc(c)}"${ouv ? ' open' : ''}><summary${fs(f)}>${esc(nom)}${sl.size ? ` (${sl.size})` : ''}</summary><div class="liste">${vals.map(v => `<label><input type="checkbox" data-c="${esc(c)}" value="${esc(v)}"${sl.has(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('')}</div></details>`;
+  return `<details class="flt-d${f.menu ? ' menu' : ''}" data-c="${esc(c)}"${ouv ? ' open' : ''}><summary${fs(f)}>${esc(titreMulti(f, [...sl]))}</summary><div class="liste">${vals.map(v => `<label><input type="checkbox" data-c="${esc(c)}" value="${esc(v)}"${sl.has(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('')}</div></details>`;
 }
 function filtresParDefaut() {   // sans « Tous », la première valeur d'une liste est sélectionnée
   filtresDefs.forEach(f => { if (f.type === 'unique' && f.tous === false) { const v = valsDe(f.c); if (v.length && !(filtreSel[f.c] && filtreSel[f.c].length)) filtreSel[f.c] = [v[0]]; } });
@@ -1414,6 +1428,7 @@ function blocFiltres() {
       <div class="rg-l2"><select ${A} data-f="type" aria-label="Type de filtre"><option value="multi"${f.type === 'multi' ? ' selected' : ''}>Choix multiples (cases à cocher)</option><option value="unique"${f.type === 'unique' ? ' selected' : ''}>Choix unique (liste déroulante)</option><option value="oui"${f.type === 'oui' ? ' selected' : ''}>Oui / non : case « seulement les oui »</option><option value="curseur"${f.type === 'curseur' ? ' selected' : ''}>Oui / non : curseur Tous · Oui · Non</option></select>
       ${f.type === 'oui' || f.type === 'curseur' ? `<label>Valeur « oui » <input type="text" ${A} data-f="oui" value="${esc(f.oui)}" style="max-width:110px"></label>` : ''}${f.type === 'curseur' ? `<label>Valeur « non » <input type="text" ${A} data-f="non" value="${esc(f.non)}" style="max-width:110px"></label>` : ''}</div>
       ${f.type === 'oui' ? `<div class="rg-l2"><label>Apparence <select ${A} data-f="bouton"><option value=""${f.bouton ? '' : ' selected'}>Case à cocher</option><option value="1"${f.bouton ? ' selected' : ''}>Bouton cliquable</option></select></label></div>` : ''}
+      ${f.type === 'multi' ? `<div class="rg-l2"><label><input type="checkbox" ${A} data-f="menu"${f.menu ? ' checked' : ''}> Afficher en liste déroulante</label></div>` : ''}
       ${f.type === 'unique' ? `<div class="rg-l2"><label><input type="checkbox" ${A} data-f="tous"${f.tous ? ' checked' : ''}> Proposer une entrée « Tous »</label>${f.tous ? `<input type="text" ${A} data-f="tousTxt" value="${esc(f.tousTxt)}" placeholder="Tous" style="max-width:120px" aria-label="Texte de l’entrée Tous">` : '<span class="vide" style="font-size:12px">La première valeur est alors sélectionnée.</span>'}</div>` : ''}
       <div class="rg-l2"><input type="text" ${A} data-f="aide" value="${esc(f.aide)}" placeholder="Aide au survol (facultatif)" aria-label="Aide au survol"></div>
       <div class="rg-l2"><label><input type="checkbox" ${A} data-f="hors"${f.hors ? ' checked' : ''}> Toujours visible (reste affiché quand « Filtres » est plié)</label></div>
