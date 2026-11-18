@@ -271,7 +271,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '88';
+const VERSION = '89';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -327,8 +327,8 @@ const hex = c => /^#[0-9a-f]{6}$/i.test(c || '') ? c : '';
 const nEnt = h => { h = h || {}; return { titre:h.titre || '', sous:h.sous || '', etiq:h.etiq !== false, fond:['neutre', 'point', 'perso'].includes(h.fond) ? h.fond : 'neutre', fondc:hex(h.fondc) || '#f6f8fb', txtc:hex(h.txtc), taille:+h.taille || 0 }; };
 const nDef = d => { d = d || {}; return { couleur:hex(d.couleur) || DEFAUT.couleur, forme:FORMES.includes(d.forme) ? d.forme : DEFAUT.forme, bordc:hex(d.bordc) || DEFAUT.bordc, borde:(d.borde === undefined || d.borde === null || isNaN(+d.borde)) ? DEFAUT.borde : Math.max(0, Math.min(8, +d.borde)) }; };
 const BARRE_POS = { 'Haut au centre':'hc', 'Haut à gauche':'hg', 'Haut à droite':'hd', 'Bas au centre':'bc', 'Bas à gauche':'bg', 'Bas à droite':'bd' };
-const BOUTONS_DEF = [{ id:'zoomin', on:true, txt:'', ti:'Zoomer' }, { id:'zoomout', on:true, txt:'', ti:'Dézoomer' }, { id:'tout', on:false, txt:'', ti:'Voir tous les points' }, { id:'legende', on:false, txt:'', ti:'Légende' }, { id:'iti', on:false, txt:'', ti:'Préparer un itinéraire' }, { id:'prog', on:false, txt:'', ti:'Voir la progression' }];
-const ICONES_BARRE = { zoomin:'+', zoomout:'−', tout:'⤢', iti:'🧭', prog:'📊', legende:'<svg viewBox="0 0 24 24" width="60%" height="60%" fill="currentColor" aria-hidden="true"><path d="M12 2 1 8l11 6 11-6-11-6zm0 13.2L3.7 10.7 1 12.2l11 6 11-6-2.7-1.5L12 15.2zm0 4L3.7 14.7 1 16.2l11 6 11-6-2.7-1.5L12 19.2z"/></svg>' };
+const BOUTONS_DEF = [{ id:'zoomin', on:true, txt:'', ti:'Zoomer' }, { id:'zoomout', on:true, txt:'', ti:'Dézoomer' }, { id:'tout', on:false, txt:'', ti:'Voir tous les points' }, { id:'legende', on:false, txt:'', ti:'Légende' }, { id:'liste', on:false, txt:'', ti:'Liste des points' }, { id:'iti', on:false, txt:'', ti:'Préparer un itinéraire' }, { id:'prog', on:false, txt:'', ti:'Voir la progression' }];
+const ICONES_BARRE = { zoomin:'+', zoomout:'−', tout:'⤢', iti:'🧭', prog:'📊', liste:'☰', legende:'<svg viewBox="0 0 24 24" width="60%" height="60%" fill="currentColor" aria-hidden="true"><path d="M12 2 1 8l11 6 11-6-11-6zm0 13.2L3.7 10.7 1 12.2l11 6 11-6-2.7-1.5L12 15.2zm0 4L3.7 14.7 1 16.2l11 6 11-6-2.7-1.5L12 19.2z"/></svg>' };
 const nBarre = b => {
   b = b || {}; const sv = Array.isArray(b.boutons) ? b.boutons : [], out = [];
   sv.forEach(x => { const d = BOUTONS_DEF.find(y => y.id === x.id); if (d && !out.some(o => o.id === d.id)) out.push({ id:d.id, on: x.on === undefined ? d.on : x.on === true, txt:String(x.txt || ''), ti:String(x.ti || d.ti) }); });
@@ -426,7 +426,7 @@ function styleDe(vals) {
 
 /* ================= CARTE ET PANNEAU DE GAUCHE ================= */
 const map = L.map('map', { center:[46.6,2.5], zoom:6, minZoom:4, maxZoom:21, zoomSnap:0.5, zoomDelta:0.5, wheelPxPerZoomLevel:90, zoomControl:false, layers:[fonds['Plan IGN']] });
-const barre = document.createElement('div'); barre.id = 'barre'; barre.innerHTML = '<div id="barre-btns"></div><div class="pop" id="pop-legende"></div>'; document.body.appendChild(barre);
+const barre = document.createElement('div'); barre.id = 'barre'; barre.innerHTML = '<div id="barre-btns"></div><div class="pop" id="pop-legende"></div><div class="pop" id="pop-liste"></div>'; document.body.appendChild(barre);
 ['hc', 'bc'].forEach(k => { const h = document.createElement('div'); h.id = 'hote-' + k; h.className = 'hote'; document.body.appendChild(h); });
 const barreOn = id => cfg.barre.boutons.some(x => x.id === id && x.on);
 function dessinerBarre() {
@@ -434,15 +434,21 @@ function dessinerBarre() {
   const st = barre.style, rayon = { carre:'0', arrondi:'10px', rond:'50%' }[b.forme];
   st.setProperty('--bb-t', b.taille + 'px'); st.setProperty('--bb-fond', b.fond); st.setProperty('--bb-coul', b.coul); st.setProperty('--bb-bc', b.bordc); st.setProperty('--bb-bw', b.borde + 'px'); st.setProperty('--bb-r', rayon); st.setProperty('--bb-sh', b.ombre ? '0 1px 4px #0004' : 'none');
   const pop = barre.querySelector('#pop-legende'), leg = document.getElementById('legende'), pan = document.querySelector('.panel.gauche');
-  barre.querySelector('#barre-btns').innerHTML = b.boutons.filter(x => x.on).map(x => `<button type="button" class="bb" data-b="${x.id}" data-aide="${esc(x.ti)}" aria-label="${esc(x.ti)}"${x.id === 'legende' ? ` aria-pressed="${pop.classList.contains('ouvert')}"` : ''}>${x.txt ? esc(x.txt) : ICONES_BARRE[x.id]}</button>`).join('');
+  barre.querySelector('#barre-btns').innerHTML = b.boutons.filter(x => x.on).map(x => `<button type="button" class="bb" data-b="${x.id}" data-aide="${esc(x.ti)}" aria-label="${esc(x.ti)}"${x.id === 'legende' || x.id === 'liste' ? ` aria-pressed="${barre.querySelector('#pop-' + x.id).classList.contains('ouvert')}"` : ''}>${x.txt ? esc(x.txt) : ICONES_BARRE[x.id]}</button>`).join('');
   if (leg && pop && pan) { if (barreOn('legende')) { if (leg.parentNode !== pop) pop.appendChild(leg); } else { if (leg.parentNode !== pan) pan.appendChild(leg); pop.classList.remove('ouvert'); } }
+  const lb = document.getElementById('b-liste'), pl = barre.querySelector('#pop-liste'), lst = document.getElementById('liste'), lbt = document.getElementById('liste-btn');   // la liste des points peut aussi s'ouvrir depuis la barre
+  if (lb && lst && lbt) { if (barreOn('liste')) { if (lst.parentNode !== pl) pl.appendChild(lst); lbt.style.display = 'none'; } else { if (lst.parentNode !== lb) lb.appendChild(lst); lbt.style.display = ''; pl.classList.remove('ouvert'); } }
   const hc = document.getElementById('hote-hc'), bc = document.getElementById('hote-bc');   // la recherche de commune se décale si la barre occupe le même emplacement
   if (hc) hc.style.top = (b.pos === 'Haut au centre' ? b.taille + 20 : 10) + 'px'; if (bc) bc.style.bottom = (b.pos === 'Bas au centre' ? b.taille + 40 : 30) + 'px';
 }
 barre.addEventListener('click', e => {
   const x = e.target.closest('button[data-b]'); if (!x) return; const id = x.dataset.b;
   if (id === 'zoomin') map.zoomIn(); else if (id === 'zoomout') map.zoomOut(); else if (id === 'tout') recentrer(); else if (id === 'iti') ouvrirIti(); else if (id === 'prog') ouvrirProg();
-  else if (id === 'legende') { const o = barre.querySelector('#pop-legende').classList.toggle('ouvert'); x.setAttribute('aria-pressed', String(o)); }
+  else if (id === 'legende' || id === 'liste') {
+    const o = barre.querySelector('#pop-' + id).classList.toggle('ouvert'); x.setAttribute('aria-pressed', String(o));
+    if (id === 'liste') setListe(o);
+    if (o) { const autre = id === 'liste' ? 'legende' : 'liste'; barre.querySelector('#pop-' + autre).classList.remove('ouvert'); const bt = barre.querySelector(`[data-b="${autre}"]`); if (bt) bt.setAttribute('aria-pressed', 'false'); if (id === 'legende' && barreOn('liste')) setListe(false); }
+  }
 });
 const communeCtl = L.control({ position:'topright' });
 const creerCommune = () => {
@@ -550,7 +556,11 @@ haut.onAdd = () => {
   d.querySelector('#filtres').addEventListener('click', e => {   // filtre « oui » affiché comme bouton : un clic active ou désactive
     if (e.target.closest('#flt-raz')) { Object.keys(filtreSel).forEach(c => delete filtreSel[c]); filtresParDefaut(); document.getElementById('filtres').innerHTML = filtresBloc(); appliquerFiltres(); return; }
     const eff = e.target.closest('.flt-eff');   // « Tout effacer » d'une liste déroulante
-    if (eff) { const det = eff.closest('details'), c = eff.dataset.c; det.querySelectorAll('input:checked').forEach(x => { x.checked = false; }); filtreSel[c] = []; det.querySelector('summary').textContent = titreMulti(filtresDefs.find(f => f.c === c) || { c }, []); appliquerFiltres(); return; }
+    if (eff) {   // « Tout sélectionner » coche les valeurs affichées (selon la recherche) ; « Tout effacer » décoche tout
+      const det = eff.closest('details'), c = eff.dataset.c, tout = !!eff.dataset.tout;
+      det.querySelectorAll('input[type=checkbox]').forEach(x => { if (!tout) x.checked = false; else if (!x.parentNode.hidden) x.checked = true; });
+      filtreSel[c] = [...det.querySelectorAll('input:checked')].map(x => x.value); det.querySelector('summary').textContent = titreMulti(filtresDefs.find(f => f.c === c) || { c }, filtreSel[c]); appliquerFiltres(); return;
+    }
     const b = e.target.closest('button.flt-btn'); if (!b) return;
     const c = b.dataset.c, on = !(filtreSel[c] && filtreSel[c].length); filtreSel[c] = on ? ['__oui__'] : [];
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.textContent = (on ? '✓ ' : '') + b.dataset.nom; appliquerFiltres();
@@ -662,7 +672,7 @@ function filtreHtml(f) {
   const vals = [...new Set([...marqueurs.values()].map(x => x._cifi.fv[c]))].filter(v => v !== undefined).sort((a, b) => String(a).localeCompare(String(b), 'fr')).slice(0, 1000);
   if (f.type === 'unique') return `<label class="flt"${fs(f)}>${esc(nom)}<select data-c="${esc(c)}" data-t="unique">${f.tous !== false ? `<option value="">${esc(f.tousTxt || 'Tous')}</option>` : ''}${vals.map(v => `<option${sl.has(v) ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label>`;
   const ouv = etatFiltres.has(c) ? etatFiltres.get(c) : opt('filtres_sous_ouvert', false) === true;
-  return `<details class="flt-d${f.menu ? ' menu' : ''}" data-c="${esc(c)}"${ouv ? ' open' : ''}><summary${fs(f)}>${esc(titreMulti(f, [...sl]))}</summary><div class="liste">${f.menu ? '<input type="search" class="flt-rech" placeholder="Rechercher…" aria-label="Rechercher dans la liste"><button type="button" class="flt-eff" data-c="' + esc(c) + '">Tout effacer</button>' : ''}${vals.map(v => `<label><input type="checkbox" data-c="${esc(c)}" value="${esc(v)}"${sl.has(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('')}</div></details>`;
+  return `<details class="flt-d${f.menu ? ' menu' : ''}" data-c="${esc(c)}"${ouv ? ' open' : ''}><summary${fs(f)}>${esc(titreMulti(f, [...sl]))}</summary><div class="liste">${f.menu ? '<input type="search" class="flt-rech" placeholder="Rechercher…" aria-label="Rechercher dans la liste"><button type="button" class="flt-eff" data-c="' + esc(c) + '" data-tout="1">Tout sélectionner</button> <button type="button" class="flt-eff" data-c="' + esc(c) + '">Tout effacer</button>' : ''}${vals.map(v => `<label><input type="checkbox" data-c="${esc(c)}" value="${esc(v)}"${sl.has(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('')}</div></details>`;
 }
 function filtresParDefaut() {   // sans « Tous », la première valeur d'une liste est sélectionnée
   filtresDefs.forEach(f => { if (f.type === 'unique' && f.tous === false) { const v = valsDe(f.c); if (v.length && !(filtreSel[f.c] && filtreSel[f.c].length)) filtreSel[f.c] = [v[0]]; } });
@@ -1329,7 +1339,7 @@ function blocListe(g) {
     <button type="button" class="rg-ajout" data-a="pk-open" data-g="${g}">+ Ajouter des colonnes…</button>`;
 }
 let picker = null, menuOuvert = null;
-const elOuverts = new Set(), NOMS_BARRE = { zoomin:'Zoom avant (+)', zoomout:'Zoom arrière (−)', tout:'Voir tous les points', legende:'Légende', iti:'Préparer un itinéraire', prog:'Voir la progression' };
+const elOuverts = new Set(), NOMS_BARRE = { zoomin:'Zoom avant (+)', zoomout:'Zoom arrière (−)', tout:'Voir tous les points', legende:'Légende', liste:'Liste des points', iti:'Préparer un itinéraire', prog:'Voir la progression' };
 function menuAjout(cle, items, action, libelle) {   // bouton « + Ajouter … » qui propose les éléments connus non affichés
   if (!items.length) return '';
   return `<div class="rg-ajout-zone"><button type="button" class="rg-ajout" data-a="menu" data-m="${cle}" aria-expanded="${menuOuvert === cle}">+ ${libelle}</button>${menuOuvert === cle ? `<div class="rg-menu">${items.map(([k, nom]) => btn(action, `data-e="${k}"`, esc(nom))).join('')}</div>` : ''}</div>`;
@@ -1477,7 +1487,7 @@ function blocEtiquette(k, titre) {
     <label>Taille du symbole <input type="number" min="12" max="44" ${D} data-f="taille" value="${e.taille}"> px</label></section>`;
 }
 function blocBarre() {
-  const b = cfg.barre, D = 'data-a="bb"', noms = { zoomin:'Zoom avant (+)', zoomout:'Zoom arrière (−)', tout:'Voir tous les points', legende:'Légende', iti:'Préparer un itinéraire', prog:'Voir la progression' };
+  const b = cfg.barre, D = 'data-a="bb"', noms = NOMS_BARRE;
   return `<section><h3>Apparence de la barre</h3>
     <label>Emplacement <select ${D} data-f="pos">${Object.keys(BARRE_POS).map(p => `<option${p === b.pos ? ' selected' : ''}>${p}</option>`).join('')}</select></label>
     <label>Taille des boutons <input type="number" min="26" max="60" ${D} data-f="taille" value="${b.taille}"> px</label>
