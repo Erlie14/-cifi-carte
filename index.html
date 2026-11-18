@@ -124,6 +124,10 @@
   #filtres details.flt-d.menu { position:relative; }
   #filtres details.flt-d.menu > summary { border:1px solid var(--line); background:#fff; padding:5px 8px; cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:6px; }
   #filtres details.flt-d.menu > summary::after { content:'▾'; }
+  #filtres details.flt-d.menu > summary::-webkit-details-marker { display:none; }
+  #filtres label[hidden] { display:none; }
+  #filtres .flt-eff { border:0; background:none; color:var(--bleu, #000091); text-decoration:underline; cursor:pointer; padding:0 0 4px; font:inherit; }
+  #filtres .flt-rech { width:100%; box-sizing:border-box; margin:2px 0 4px; padding:5px 8px; border:1px solid var(--line); }
   #filtres details.flt-d.menu > .liste { position:absolute; left:0; right:0; z-index:5; max-height:220px; background:#fff; border:1px solid var(--line); box-shadow:0 2px 8px #0002; padding:4px 8px; }
   .rg-corps label input[type=text] { width:100%; margin:4px 0 0; box-sizing:border-box; }
   .leaflet-top.leaflet-left .panel { width:250px; box-sizing:border-box; max-height:calc(100vh - 24px); overflow:auto; }
@@ -267,7 +271,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '86';
+const VERSION = '88';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -545,6 +549,8 @@ haut.onAdd = () => {
   });
   d.querySelector('#filtres').addEventListener('click', e => {   // filtre « oui » affiché comme bouton : un clic active ou désactive
     if (e.target.closest('#flt-raz')) { Object.keys(filtreSel).forEach(c => delete filtreSel[c]); filtresParDefaut(); document.getElementById('filtres').innerHTML = filtresBloc(); appliquerFiltres(); return; }
+    const eff = e.target.closest('.flt-eff');   // « Tout effacer » d'une liste déroulante
+    if (eff) { const det = eff.closest('details'), c = eff.dataset.c; det.querySelectorAll('input:checked').forEach(x => { x.checked = false; }); filtreSel[c] = []; det.querySelector('summary').textContent = titreMulti(filtresDefs.find(f => f.c === c) || { c }, []); appliquerFiltres(); return; }
     const b = e.target.closest('button.flt-btn'); if (!b) return;
     const c = b.dataset.c, on = !(filtreSel[c] && filtreSel[c].length); filtreSel[c] = on ? ['__oui__'] : [];
     b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.textContent = (on ? '✓ ' : '') + b.dataset.nom; appliquerFiltres();
@@ -553,7 +559,9 @@ haut.onAdd = () => {
   const fermerMenus = (hors) => document.querySelectorAll('#filtres details.flt-d.menu[open]').forEach(m => { if (!hors || !m.contains(hors)) m.open = false; });
   document.addEventListener('click', e => fermerMenus(e.target));   // un clic ailleurs ferme les listes déroulantes
   document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerMenus(null); });
-  d.querySelector('#filtres').addEventListener('input', e => { if (e.target.dataset.t === 'curseur') e.target.dispatchEvent(new Event('change', { bubbles:true })); });
+  d.querySelector('#filtres').addEventListener('input', e => {   // recherche dans une liste déroulante : on masque les valeurs qui ne correspondent pas
+    if (e.target.classList.contains('flt-rech')) { const q = sansAccent(e.target.value.trim()); e.target.parentNode.querySelectorAll('label').forEach(l => { l.hidden = !sansAccent(l.textContent).includes(q); }); return; }
+    if (e.target.dataset.t === 'curseur') e.target.dispatchEvent(new Event('change', { bubbles:true })); });
   d.querySelector('#liste-btn').addEventListener('click', () => { listeOuverte = !listeOuverte; setListe(listeOuverte); });
   d.querySelector('#liste').addEventListener('click', e => { const b = e.target.closest('button[data-id]'); if (b) allerA(Number(b.dataset.id)); });
   d.querySelector('#legende').addEventListener('click', e => {
@@ -654,7 +662,7 @@ function filtreHtml(f) {
   const vals = [...new Set([...marqueurs.values()].map(x => x._cifi.fv[c]))].filter(v => v !== undefined).sort((a, b) => String(a).localeCompare(String(b), 'fr')).slice(0, 1000);
   if (f.type === 'unique') return `<label class="flt"${fs(f)}>${esc(nom)}<select data-c="${esc(c)}" data-t="unique">${f.tous !== false ? `<option value="">${esc(f.tousTxt || 'Tous')}</option>` : ''}${vals.map(v => `<option${sl.has(v) ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label>`;
   const ouv = etatFiltres.has(c) ? etatFiltres.get(c) : opt('filtres_sous_ouvert', false) === true;
-  return `<details class="flt-d${f.menu ? ' menu' : ''}" data-c="${esc(c)}"${ouv ? ' open' : ''}><summary${fs(f)}>${esc(titreMulti(f, [...sl]))}</summary><div class="liste">${vals.map(v => `<label><input type="checkbox" data-c="${esc(c)}" value="${esc(v)}"${sl.has(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('')}</div></details>`;
+  return `<details class="flt-d${f.menu ? ' menu' : ''}" data-c="${esc(c)}"${ouv ? ' open' : ''}><summary${fs(f)}>${esc(titreMulti(f, [...sl]))}</summary><div class="liste">${f.menu ? '<input type="search" class="flt-rech" placeholder="Rechercher…" aria-label="Rechercher dans la liste"><button type="button" class="flt-eff" data-c="' + esc(c) + '">Tout effacer</button>' : ''}${vals.map(v => `<label><input type="checkbox" data-c="${esc(c)}" value="${esc(v)}"${sl.has(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('')}</div></details>`;
 }
 function filtresParDefaut() {   // sans « Tous », la première valeur d'une liste est sélectionnée
   filtresDefs.forEach(f => { if (f.type === 'unique' && f.tous === false) { const v = valsDe(f.c); if (v.length && !(filtreSel[f.c] && filtreSel[f.c].length)) filtreSel[f.c] = [v[0]]; } });
