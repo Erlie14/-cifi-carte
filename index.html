@@ -138,8 +138,9 @@
   #liste button { display:flex; align-items:center; gap:7px; width:100%; padding:5px 8px; font:inherit; font-size:13px; text-align:left; background:none; border:0; border-bottom:1px solid #eee; cursor:pointer; color:var(--ink); }
   #liste button:hover { background:#f6f6f6; } #liste i { flex:none; width:10px; height:10px; border-radius:50%; border:1px solid #0005; }
   .legend { margin-top:8px; } .legend .sw { flex:none; width:18px; text-align:center; font-size:15px; line-height:1; }
-  .rg-onglets { display:grid; grid-template-columns:repeat(auto-fill, minmax(118px, 1fr)); gap:6px; padding:8px 18px; border-bottom:1px solid var(--line); }
-  .rg-onglets button { font:inherit; font-size:13px; padding:6px 4px; text-align:center; border:1px solid var(--line); border-radius:16px; background:#fff; cursor:pointer; }
+  .rg-ver { font-size:11px; font-weight:400; color:var(--muted); margin-left:6px; }
+  .rg-onglets { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:4px;  padding:8px 18px; border-bottom:1px solid var(--line); }
+  .rg-onglets button { font:inherit; font-size:12px; line-height:1.2; padding:5px 2px; text-align:center; border:1px solid var(--line); border-radius:16px; background:#fff; cursor:pointer; }
   .rg-onglets button[aria-pressed=true] { background:var(--accent); color:#fff; border-color:var(--accent); }
   .rg-sous { font-size:12px; font-weight:700; color:var(--muted); margin:8px 0 2px; text-transform:uppercase; }
   .rg-l2 select { max-width:100%; } .rg-corps input[type=color] { width:38px; height:28px; padding:0; border:1px solid var(--line); border-radius:0; }
@@ -163,7 +164,7 @@
   .rg-btns { display:flex; gap:4px; } .rg-corps-r { padding:0 12px 12px; }
   .ref { color:#666; text-decoration:none; border-bottom:1px dotted #929292; cursor:pointer; } .ref:hover { color:var(--accent); } .ref-ico { font-size:.8em; margin-left:2px; opacity:.75; }
   .pulse { position:absolute; left:0; top:0; z-index:-1; border-radius:50%; background:var(--bc); opacity:.5; animation:pulse 1.6s ease-out infinite; pointer-events:none; }
-  .leg-sym { position:relative; display:inline-flex; align-items:center; vertical-align:middle; isolation:isolate; } .leg-bul { font-size:10px; line-height:1; padding:2px 4px; margin-left:3px; max-width:56px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .leg-sym { position:relative; display:inline-flex; align-items:center; vertical-align:middle; isolation:isolate; }
   @keyframes pulse { 0% { transform:scale(.8); opacity:.6; } 100% { transform:scale(2.3); opacity:0; } }
   @media (prefers-reduced-motion:reduce) { .pulse { animation:none; opacity:.25; transform:scale(1.5); } }
   .bul { position:absolute; pointer-events:none; font:700 11px/1 system-ui,sans-serif; border-radius:0; padding:3px 7px; white-space:nowrap; box-shadow:0 1px 3px #0005; border:1px solid #fff; }
@@ -297,7 +298,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '104';
+const VERSION = '106';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -364,7 +365,7 @@ const nEncart = (e, i) => { e = e || {}; const elts = (Array.isArray(e.elts) ? e
   elts }; };
 const encartsDef = () => {   // encarts de départ ; les éléments déjà retirés dans une ancienne configuration (aff_xxx) n'y figurent pas
   const A = k => opts['aff_' + k] !== false, gr = (id, titre, ks, o) => ({ id, titre, elts:ks.filter(A), ...o });
-  return [gr('e1', 'Filtres', ['commune', 'q', 'filtres', 'count', 'version']), gr('e2', 'Liste des points', ['liste']), gr('e3', 'Suivi des objectifs', ['suivi', 'prog']), gr('e4', 'Outils', ['iti', 'legende'])].filter(e => e.elts.length);
+  return [gr('e1', 'Filtres', ['commune', 'q', 'filtres', 'count']), gr('e2', 'Liste des points', ['liste']), gr('e3', 'Suivi des objectifs', ['suivi', 'prog']), gr('e4', 'Outils', ['iti', 'legende'])].filter(e => e.elts.length);
 };
 const normEncarts = a => {   // identifiants uniques ; un élément n'est que dans un seul encart (le premier)
   const vus = new Set(), ids = new Set();
@@ -645,13 +646,11 @@ function allerA(id) {
   montrer(m, () => { map.panTo(m.getLatLng()); m.openPopup(); });
 }
 function recentrer() { const p = [...marqueurs.values()].filter(m => cluster.hasLayer(m)).map(m => m.getLatLng()); if (p.length) map.fitBounds(p, { padding:[40,40], maxZoom:17 }); }
-function symboleLegende(c) {   // pastille de la légende + signal pulsé et bulle de la règle
+function symboleLegende(c) {   // pastille de la légende + signal pulsé de la règle
   const e = cfg.etiquettes.legende, sym = etiquetteHtml({ forme:c.forme, couleur:c.couleur, contenu:c.emoji, bordc:c.bordc, borde:c.borde }, e, null);
-  if (!sym || (!c.pulse && !c.bulle)) return sym;
-  const p = c.pulse, b = c.bulle;
-  const pu = p ? `<span class="pulse" style="--bc:${p.couleur};left:2px;width:${e.taille}px;height:${e.taille}px;animation-duration:${({ lent:2.6, normal:1.6, rapide:0.9 })[p.rythme] || 1.6}s"></span>` : '';
-  const bu = b ? `<span class="leg-bul" style="${b.nf ? `color:${b.couleur}` : `background:${b.couleur};color:${sombre(b.couleur) ? '#161616' : '#fff'};border-radius:${{ carre:'0', arrondi:'6px', rond:'999px' }[b.f] || '0'}`}">${b.src === 'col' ? '…' : esc(b.e || '')}</span>` : '';
-  return `<span class="leg-sym">${pu}${sym}${bu}</span>`;
+  if (!sym || !c.pulse) return sym;
+  const p = c.pulse;
+  return `<span class="leg-sym"><span class="pulse" style="--bc:${p.couleur};left:2px;width:${e.taille}px;height:${e.taille}px;animation-duration:${({ lent:2.6, normal:1.6, rapide:0.9 })[p.rythme] || 1.6}s"></span>${sym}</span>`;
 }
 function majLegende() {
   const z = document.getElementById('legende'); if (!z) return;
@@ -1079,8 +1078,8 @@ function construire() {
   });
   for (const [id, x] of [...marqueurs]) if (!vus.has(id)) { cluster.removeLayer(x); marqueurs.delete(id); }
 
-  legCats = cfg.regles.map((r, i) => ({ i, r })).filter(x => regleActive(x.r) && presents.has(x.i)).map(x => ({ k:'r' + x.i, label:nomRegle(x.r), couleur:x.r.couleur || cfg.defaut.couleur, forme:x.r.forme || cfg.defaut.forme, emoji:x.r.contenu.t === 'emoji' ? x.r.contenu.e : '', bordc:x.r.bordc || cfg.defaut.bordc, borde:x.r.bordc ? x.r.borde : cfg.defaut.borde, pulse:x.r.pulse.on ? x.r.pulse : null, bulle:x.r.bulle.t ? x.r.bulle : null }));
-  if (legCats.length && presents.has(-1)) legCats.push({ k:'r-1', label:'Autres', couleur:cfg.defaut.couleur, forme:cfg.defaut.forme, emoji:'', bordc:cfg.defaut.bordc, borde:cfg.defaut.borde, pulse:null, bulle:null });
+  legCats = cfg.regles.map((r, i) => ({ i, r })).filter(x => regleActive(x.r) && presents.has(x.i)).map(x => ({ k:'r' + x.i, label:nomRegle(x.r), couleur:x.r.couleur || cfg.defaut.couleur, forme:x.r.forme || cfg.defaut.forme, emoji:x.r.contenu.t === 'emoji' ? x.r.contenu.e : '', bordc:x.r.bordc || cfg.defaut.bordc, borde:x.r.bordc ? x.r.borde : cfg.defaut.borde, pulse:x.r.pulse.on ? x.r.pulse : null }));
+  if (legCats.length && presents.has(-1)) legCats.push({ k:'r-1', label:'Autres', couleur:cfg.defaut.couleur, forme:cfg.defaut.forme, emoji:'', bordc:cfg.defaut.bordc, borde:cfg.defaut.borde, pulse:null });
   majLegende();
 
   const valsDe = c => [...new Set([...marqueurs.values()].map(x => x._cifi.fv[c]))].filter(v => v !== undefined).sort((a, b) => String(a).localeCompare(String(b), 'fr')).slice(0, 1000);
@@ -1600,7 +1599,6 @@ function blocFiltres() {
     <label>Emplacement ${sl('pos_commune', POS_COMMUNE)}</label>
     ${optCase('commune_filtre', 'Ne garder que les points situés dans la commune')}${optCase('commune_contour', 'Tracer le contour de la commune sur la carte')}</section>
     <section><h3>Titre des filtres</h3>${blocElt('filtres')}</section>
-    ${sectionElt('count', 'Nombre de points affichés')}${sectionElt('version', 'Numéro de version')}
     <section><h3>Présentation des filtres</h3>
     <label>Hauteur maximale des listes dépliées <input type="number" min="0" max="1500" data-o="liste_max" data-zero="1" value="${+opt('liste_max', 0) || ''}" placeholder="aucune limite" style="width:120px"> px</label>
     <label><input type="checkbox" data-o="filtres_titre_on"${opt('filtres_titre_on', true) !== false ? ' checked' : ''}> Afficher un titre pliable au-dessus des filtres</label>
@@ -1717,6 +1715,7 @@ function contenuOnglet() {
     ${optStyleGrist()}
     <label>Police d’écriture ${sl('police', Object.keys(POLICES))}</label>
     <p class="vide" style="font-size:12px;margin:0">Police utilisée pour tous les textes du widget.</p></section>
+    ${sectionElt('count', 'Nombre de points affichés')}${sectionElt('version', 'Numéro de version')}
     ${blocSauvegarde()}`;
 }
 const AIDES_ONGLET = {
@@ -1728,19 +1727,19 @@ const AIDES_ONGLET = {
   messages:'Bandeaux temporaires affichés sur la carte, avec une durée, une répétition et des dates facultatives.',
   prog:'Barres d’avancement calculées à partir des colonnes de votre choix, éventuellement regroupées selon une colonne.',
   barre:'Choisissez les boutons affichés directement sur la carte (zoom, légende, itinéraire…) et leur ordre. Un bouton placé sur la carte n’est plus affiché dans les encarts.',
-  legende:'Tout ce qui concerne la légende : titre, icône, pastilles, tailles. Chaque ligne reprend le style de la règle correspondante (couleur, forme, emoji, signal pulsé, bulle).',
+  legende:'Tout ce qui concerne la légende : titre, icône, pastilles, tailles. Chaque ligne reprend le style de la règle correspondante (couleur, forme, emoji, signal pulsé).',
   iti:'Bouton et volet d’itinéraire, avertissements et service de calcul.',
   general:'Aides au survol, police, et export de la configuration. Les autres réglages se trouvent dans l’onglet de l’élément concerné.' }; const avertOnglet = () => ({ points: cfg.regles.filter(r => !regleActive(r)).length, filtres: cfg.filtres.filter(f => !f.c).length, prog: cfg.prog.inds.filter(warnInd).length, messages: cfg.messages.filter(m => m.actif && !m.texte.trim()).length, fiche: cfg.sections.filter(x => x.type === 'lie' ? (!x.lie.table || !x.lie.cle || !x.lie.cols.some(c => c.c)) : x.type === 'tableau' ? !x.tab.rows.length : !x.cols.length).length });
 function majCfgClasses() { const b = document.body; if (b && b.classList) b.classList.toggle('cfg-large', modal.classList.contains('ouvert') && !modal.classList.contains('reduit')); }
 const cleLib = ks => ks.map(k => (LIB[k] || [])[0]).filter(Boolean);   // réglages (hors cfg) remis à zéro par « Réinitialiser cet onglet »
 const CLES_ONGLET = { points:['taille', 'regroupement', 'distance_m', ...cleLib(['liste']), 'lib_liste2', 'ico_liste', 'ico_liste2', 'aide_liste', 'ouv_liste'], popup:['larg_popup', 'haut_popup', 'larg_noms', 'pn_taille', 'pn_fonte', 'pn_coul_on', 'pn_coul', 'pv_taille', 'pv_fonte', 'pv_coul_on', 'pv_coul'],
-  fiche:['larg_fiche', 'taille_fiche', 'larg_noms', 'ouverture'], filtres:['pos_commune', 'commune_filtre', 'commune_contour', 'liste_max', 'sug_on', 'sug_max', 'sug_min', ...cleLib(['q', 'filtres', 'count', 'version', 'commune']), 'ico_filtres', 'aide_q', 'aide_filtres'],
+  fiche:['larg_fiche', 'taille_fiche', 'larg_noms', 'ouverture'], filtres:['pos_commune', 'commune_filtre', 'commune_contour', 'liste_max', 'sug_on', 'sug_max', 'sug_min', ...cleLib(['q', 'filtres', 'commune']), 'ico_filtres', 'aide_q', 'aide_filtres'],
   legende:['taille_legende', 'larg_pop_leg', 'haut_pop_leg', ...cleLib(['legende']), 'ico_legende', 'aide_legende', 'ouv_legende'], iti:['iti_url', 'iti_resource', 'iti_titre', 'iti_avert', 'iti_avert_pied', ...cleLib(['iti']), 'ico_iti', 'aide_iti'],
-  prog:[...cleLib(['prog']), 'ico_prog', 'aide_prog', 'prog_titre'], general:['police', 'style_grist', 'aide_on', 'aide_delai', 'aide_taille', 'aide_fond', 'aide_coul'] };
+  prog:[...cleLib(['prog']), 'ico_prog', 'aide_prog', 'prog_titre'], general:[...cleLib(['count', 'version']), 'police', 'style_grist', 'aide_on', 'aide_delai', 'aide_taille', 'aide_fond', 'aide_coul'] };
 function dessiner() {
   const y = (modal.querySelector('.rg-corps') || {}).scrollTop || 0, av = avertOnglet();
-  modal.innerHTML = `<div class="rg-onglet-reduit"><button type="button" data-a="reduire" aria-label="Rouvrir la configuration">⚙ Réglages ▸</button></div><div class="rg-boite" role="dialog" aria-label="Configurer le widget"><div class="rg-tete"><h2>Configurer le widget</h2><span id="rg-etat" class="rg-etat">${esc(etatSauv)}</span>${btn('reduire', '', '◂ Réduire', 'Réduire le volet pour voir toute la carte')}${btn('fermer', '', 'Fermer')}</div>
-    <div class="rg-onglets" role="tablist">${[['points', 'Affichage des points'], ['popup', 'Popup'], ['fiche', 'Fiche'], ['filtres', 'Filtres'], ['legende', 'Légende'], ['encarts', 'Encarts'], ['messages', 'Messages'], ['prog', 'Progression'], ['iti', 'Itinéraire'], ['barre', 'Barre de boutons'], ['general', 'Général']].map(([k, t]) => `<button type="button" role="tab" data-a="onglet" data-t="${k}" aria-pressed="${onglet === k}" aria-selected="${onglet === k}">${t}${av[k] ? ` <span class="warn" title="Réglages incomplets">⚠ ${av[k]}</span>` : ''}</button>`).join('')}</div>
+  modal.innerHTML = `<div class="rg-onglet-reduit"><button type="button" data-a="reduire" aria-label="Rouvrir la configuration">⚙ Réglages ▸</button></div><div class="rg-boite" role="dialog" aria-label="Configurer le widget"><div class="rg-tete"><h2>Configurer le widget <small class="rg-ver">version ${VERSION}</small></h2><span id="rg-etat" class="rg-etat">${esc(etatSauv)}</span>${btn('reduire', '', '◂ Réduire', 'Réduire le volet pour voir toute la carte')}${btn('fermer', '', 'Fermer')}</div>
+    <div class="rg-onglets" role="tablist">${[['points', 'Points'], ['popup', 'Popup'], ['fiche', 'Fiche'], ['filtres', 'Filtres'], ['legende', 'Légende'], ['encarts', 'Encarts'], ['messages', 'Messages'], ['prog', 'Progression'], ['iti', 'Itinéraire'], ['barre', 'Barre de boutons'], ['general', 'Général']].map(([k, t]) => `<button type="button" role="tab" data-a="onglet" data-t="${k}" aria-pressed="${onglet === k}" aria-selected="${onglet === k}">${t}${av[k] ? ` <span class="warn" title="Réglages incomplets">⚠ ${av[k]}</span>` : ''}</button>`).join('')}</div>
     <div class="rg-corps">${erreurAcces ? `<p style="color:#e1000f;font-size:13px">Impossible de lire toutes les colonnes : vérifiez que le widget est en « Accès complet » dans le panneau de droite de Grist.</p>` : ''}${picker ? blocPicker() : (AIDES_ONGLET[onglet] ? `<p class="rg-aide">${AIDES_ONGLET[onglet]}</p>` : '') + contenuOnglet() + `<div class="rg-pied-onglet"><button type="button" data-a="reset" class="rg-danger">Réinitialiser cet onglet</button></div>`}</div></div>`;
   modal.querySelector('.rg-corps').scrollTop = y;
 }
