@@ -196,10 +196,9 @@
   .zone-enc.h { flex-flow:row wrap; align-items:flex-start; } .zone-enc.v { flex-direction:column; align-items:flex-start; }
   .zp-hg { top:10px; left:10px; } .zp-hc { top:10px; left:50%; transform:translateX(-50%); } .zp-hd { top:10px; right:56px; }
   .zp-bg { bottom:30px; left:10px; } .zp-bc { bottom:30px; left:50%; transform:translateX(-50%); } .zp-bd { bottom:30px; right:10px; }
-  .zp-mg { top:50%; left:10px; transform:translateY(-50%); } .zp-md { top:50%; right:10px; transform:translateY(-50%); }
-  .zone-enc.h.zp-hc, .zone-enc.h.zp-bc { justify-content:center; } .zone-enc.h.zp-hd, .zone-enc.h.zp-bd, .zone-enc.h.zp-md { justify-content:flex-end; } .zone-enc.h.zp-bg, .zone-enc.h.zp-bc, .zone-enc.h.zp-bd { align-items:flex-end; }
-  .zone-enc.v.zp-hc, .zone-enc.v.zp-bc { align-items:center; } .zone-enc.v.zp-hd, .zone-enc.v.zp-bd, .zone-enc.v.zp-md { align-items:flex-end; } .zone-enc.v.zp-bg, .zone-enc.v.zp-bc, .zone-enc.v.zp-bd { justify-content:flex-end; }
-  body.cfg-large .zp-hd { right:calc(var(--larg-cfg) + 56px); } body.cfg-large .zp-bd, body.cfg-large .zp-md { right:calc(var(--larg-cfg) + 10px); }
+  .zone-enc.h.zp-hc, .zone-enc.h.zp-bc { justify-content:center; } .zone-enc.h.zp-hd, .zone-enc.h.zp-bd { justify-content:flex-end; } .zone-enc.h.zp-bg, .zone-enc.h.zp-bc, .zone-enc.h.zp-bd { align-items:flex-end; }
+  .zone-enc.v.zp-hc, .zone-enc.v.zp-bc { align-items:center; } .zone-enc.v.zp-hd, .zone-enc.v.zp-bd { align-items:flex-end; } .zone-enc.v.zp-bg, .zone-enc.v.zp-bc, .zone-enc.v.zp-bd { justify-content:flex-end; }
+  body.cfg-large .zp-hd { right:calc(var(--larg-cfg) + 56px); } body.cfg-large .zp-bd { right:calc(var(--larg-cfg) + 10px); }
   .zone-enc > .encart.enc-bouton { position:relative; width:auto; padding:0; }
   .zone-enc .enc-t { background:none; border:0; box-shadow:none; }
   .enc-bouton > .enc-t { margin:0; width:auto; padding:7px 12px; cursor:pointer; white-space:nowrap; }
@@ -212,13 +211,15 @@
   .enc-p.ouv-droite #b-liste, .enc-p.ouv-gauche #b-liste { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; } .enc-p.ouv-droite #liste, .enc-p.ouv-gauche #liste { flex:1 1 auto; min-height:0; max-height:none; } .enc-ph { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-weight:700; } .enc-x { border:0; background:none; font-size:16px; cursor:pointer; }
   .enc-p #liste-btn { display:none; } .enc-p #liste { display:block !important; }
   .zp-vd, .zp-vg { display:block; top:0; bottom:0; left:0; right:0; max-width:none; max-height:none; z-index:1090; } body.cfg-large .zp-vd { right:var(--larg-cfg); }   /* zones aussi larges que l'écran : sinon la largeur en % du panneau serait nulle */
+  .zone-enc.unif { display:grid; align-items:stretch; } .zone-enc.unif.h { grid-auto-flow:column; grid-auto-columns:1fr; } .zone-enc.unif.v { grid-auto-flow:row; justify-items:stretch; }   /* même taille pour tous les boutons : celle du plus grand, ou celle choisie */
+  .zone-enc.unif .enc-bouton > .enc-t { text-align:center; height:100%; box-sizing:border-box; }
   .enc-c.h { flex-flow:row wrap; align-items:flex-start; gap:6px 12px; } .enc-c.h > #b-q { width:200px; } .enc-c.h #filtres { display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px 10px; } .enc-c.h #filtres details.flt-d.menu { min-width:170px; }
   #cfg-secours { pointer-events:auto; } #cfg-secours:empty { display:none; }
   .enc-c { display:flex; flex-direction:column; } .enc-c > * { flex:none; } .enc-c > button.link, .enc-c #b-liste > button.link { align-self:flex-start; margin-top:0; }
   .enc-t { display:block; width:100%; margin:0 0 6px; padding:0; border:0; background:none; font:inherit; font-weight:700; text-align:left; color:inherit; } button.enc-t { cursor:pointer; }
   #suivi .prog-l { margin:0 0 4px; } #suivi .prog-t { font-size:12px; }
   .leaflet-top.leaflet-left, .leaflet-top.leaflet-right { display:flex; flex-direction:column; } .leaflet-top.leaflet-right { align-items:flex-end; } .leaflet-top .leaflet-control { flex:none; }
-  #barre { position:absolute; z-index:950; } #barre-btns { display:flex; gap:6px; }
+  #barre { position:absolute; z-index:950; } #barre-btns { display:flex; gap:6px; } #barre.vert #barre-btns { flex-direction:column; }
   #barre.pos-hc { top:10px; left:50%; transform:translateX(-50%); } #barre.pos-hg { top:10px; left:10px; } #barre.pos-hd { top:10px; right:56px; }
   #barre.pos-bc { bottom:30px; left:50%; transform:translateX(-50%); } #barre.pos-bg { bottom:30px; left:10px; } #barre.pos-bd { bottom:30px; right:10px; }
   .bb { width:var(--bb-t, 36px); height:var(--bb-t, 36px); display:inline-flex; align-items:center; justify-content:center; padding:0; font:700 18px system-ui, sans-serif; cursor:pointer;
@@ -226,6 +227,7 @@
   .bb:hover { filter:brightness(.94); } .bb[aria-pressed=true] { outline:2px solid var(--accent); }
   #barre .pop { position:absolute; display:none; min-width:210px; max-width:320px; max-height:60vh; overflow:auto; background:#fff; border:1px solid var(--line); border-radius:0; box-shadow:0 2px 10px #0003; padding:8px; }
   #barre .pop.ouvert { display:block; } #barre.haut .pop { top:calc(100% + 8px); } #barre.bas .pop { bottom:calc(100% + 8px); }
+  #barre.vert.haut .pop { top:0; } #barre.vert.bas .pop { top:auto; bottom:0; } #barre.vert.ga .pop, #barre.vert.ce .pop { left:calc(100% + 8px); right:auto; transform:none; } #barre.vert.dr .pop { right:calc(100% + 8px); left:auto; }   /* barre verticale : la fenêtre s'ouvre sur le côté */
   #barre.ga .pop { left:0; } #barre.dr .pop { right:0; } #barre.ce .pop { left:50%; transform:translateX(-50%); }
   .hote { position:absolute; left:50%; transform:translateX(-50%); z-index:900; } #hote-hc { top:10px; } #hote-bc { bottom:30px; }
   #filtres label.flt { font-size:13px; color:var(--ink); margin-top:8px; }
@@ -294,7 +296,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '98';
+const VERSION = '99';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -347,10 +349,11 @@ const ELTS_GAUCHE = { commune:'Recherche de commune (si placée dans le panneau)
 // Encarts en haut de la carte : chacun a un titre, un cadre, un style et la liste des éléments qu'il contient (dans l'ordre).
 const ELEM_ENC = { ...ELTS_GAUCHE, suivi:'Barre de suivi des objectifs' };
 const ELEM_ID = { commune:'commune-zone', q:'b-q', filtres:'filtres', count:'count', liste:'b-liste', suivi:'suivi', prog:'prog-btn', iti:'iti-btn', legende:'legende', version:'b-version' };
-const ZONES = { hg:'Haut à gauche', hc:'Haut au centre', hd:'Haut à droite', bg:'Bas à gauche', bc:'Bas au centre', bd:'Bas à droite', mg:'Milieu à gauche', md:'Milieu à droite' };   // où se place l'ensemble des encarts
-const nDisp = d => ({ sens:d && d.sens === 'v' ? 'v' : 'h', pos:d && ZONES[d.pos] ? d.pos : 'hg' });   // sens : h = côte à côte, v = les uns sous les autres
+const ZONES = { hg:'Haut à gauche', hc:'Haut au centre', hd:'Haut à droite', bg:'Bas à gauche', bc:'Bas au centre', bd:'Bas à droite' };   // où se place l'ensemble des encarts
+const nDisp = d => { d = d || {}; return { sens:d.sens === 'v' ? 'v' : 'h', pos:ZONES[d.pos] ? d.pos : 'hg', unif:d.unif === true, uw:borne(d.uw, 60, 600), uh:borne(d.uh, 24, 200) }; };   // sens : h = côte à côte, v = les uns sous les autres
 const borne = (v, mn, mx) => +v ? Math.max(mn, Math.min(mx, +v)) : 0;   // 0 = automatique
-const ACTIONS = ['iti', 'prog'];   // éléments qui sont eux-mêmes un bouton d'action : seul dans un encart, il devient le bouton de l'encart
+const ACTIONS = ['iti', 'prog'];
+const estAction = en => !!(en.pliable && en.titre && en.elts.length === 1 && ACTIONS.includes(en.elts[0]));   // éléments qui sont eux-mêmes un bouton d'action : seul dans un encart, il devient le bouton de l'encart
 const OUV = { bas:'Sous le bouton', droite:'À droite de l’écran', gauche:'À gauche de l’écran' };   // où s'ouvre le panneau d'un encart
 const nEncart = (e, i) => { e = e || {}; const elts = (Array.isArray(e.elts) ? e.elts : []).filter((k, j, t) => ELEM_ENC[k] && t.indexOf(k) === j); return {
   id:String(e.id || 'e' + (i + 1)).replace(/[^\w-]/g, '').slice(0, 20) || 'e' + (i + 1), titre:String(e.titre ?? '').slice(0, 80), pliable:e.pliable !== false, ouvD:e.ouvD === true, ouv:OUV[e.ouv] ? e.ouv : elts.includes('filtres') ? 'bas' : 'droite',
@@ -377,7 +380,7 @@ const nBarre = b => {
   b = b || {}; const sv = Array.isArray(b.boutons) ? b.boutons : [], out = [];
   sv.forEach(x => { const d = BOUTONS_DEF.find(y => y.id === x.id); if (d && !out.some(o => o.id === d.id)) out.push({ id:d.id, on: x.on === undefined ? d.on : x.on === true, txt:String(x.txt || ''), ti:String(x.ti || d.ti) }); });
   BOUTONS_DEF.forEach(d => { if (!out.some(o => o.id === d.id)) out.push({ ...d }); });
-  return { pos:Object.keys(BARRE_POS).includes(b.pos) ? b.pos : 'Bas à gauche', taille:Math.max(26, Math.min(60, +b.taille || 36)), forme:['carre', 'arrondi', 'rond'].includes(b.forme) ? b.forme : 'carre',
+  return { pos:Object.keys(BARRE_POS).includes(b.pos) ? b.pos : 'Bas à gauche', sens:b.sens === 'v' ? 'v' : 'h', taille:Math.max(26, Math.min(60, +b.taille || 36)), forme:['carre', 'arrondi', 'rond'].includes(b.forme) ? b.forme : 'carre',
     fond:hex(b.fond) || '#ffffff', coul:hex(b.coul) || '#161616', bordc:hex(b.bordc) || '#d5dbe3', borde:Math.max(0, Math.min(4, b.borde === undefined ? 1 : (+b.borde || 0))), ombre:b.ombre !== false, boutons:out };
 };
 const nEtq = e => { e = e || {}; return { forme:['point', 'rond', 'goutte', 'carre', 'losange', 'triangle', 'aucune'].includes(e.forme) ? e.forme : 'point', couleur:e.couleur === 'fixe' ? 'fixe' : 'point', coul:hex(e.coul) || '#000091',
@@ -474,7 +477,7 @@ const barre = document.createElement('div'); barre.id = 'barre'; barre.innerHTML
 ['hc', 'bc'].forEach(k => { const h = document.createElement('div'); h.id = 'hote-' + k; h.className = 'hote'; document.body.appendChild(h); });
 const barreOn = id => cfg.barre.boutons.some(x => x.id === id && x.on);
 function dessinerBarre() {
-  const b = cfg.barre, cl = BARRE_POS[b.pos] || 'hc'; barre.className = `pos-${cl} ${cl[0] === 'b' ? 'bas' : 'haut'} ${cl[1] === 'd' ? 'dr' : cl[1] === 'c' ? 'ce' : 'ga'}`;
+  const b = cfg.barre, cl = BARRE_POS[b.pos] || 'hc'; barre.className = `pos-${cl} ${cl[0] === 'b' ? 'bas' : 'haut'} ${cl[1] === 'd' ? 'dr' : cl[1] === 'c' ? 'ce' : 'ga'}${b.sens === 'v' ? ' vert' : ''}`;
   const st = barre.style, rayon = { carre:'0', arrondi:'10px', rond:'50%' }[b.forme];
   st.setProperty('--bb-t', b.taille + 'px'); st.setProperty('--bb-fond', b.fond); st.setProperty('--bb-coul', b.coul); st.setProperty('--bb-bc', b.bordc); st.setProperty('--bb-bw', b.borde + 'px'); st.setProperty('--bb-r', rayon); st.setProperty('--bb-sh', b.ombre ? '0 1px 4px #0004' : 'none');
   const pop = barre.querySelector('#pop-legende'), leg = document.getElementById('legende'), pan = hotesEnc.legende || document.getElementById('reserve');
@@ -683,24 +686,31 @@ function appliquerStyles() {   // couleur, fond (en pastille), taille, gras, ita
   }).join('\n');
 }
 const avecIco = (k, txt) => { const i = opt('ico_' + k, ICO_DEF[k] || ''); return (i ? i + ' ' : '') + txt; };
-let sigEnc = '', encartsVus = [], hotesEnc = {}, zonesEnc = {}, encOuvert, voletAction = null;   // voletAction : 'iti' ou 'prog' quand ce volet est ouvert   // encOuvert : l'encart dont le panneau est ouvert (un seul à la fois)
+let sigEnc = '', encartsVus = [], hotesEnc = {}, zonesEnc = {}, encOuvert, voletAction = null, nbVis = 0, nbTot = 0;   // voletAction : 'iti' ou 'prog' quand ce volet est ouvert   // encOuvert : l'encart dont le panneau est ouvert (un seul à la fois)
 const zoneEnc = c => zonesEnc[c] || (zonesEnc[c] = Object.assign(document.createElement('div'), { className:'zone-enc zp-' + c }), document.body.appendChild(zonesEnc[c]), zonesEnc[c]);
 function ouvrirEnc(id) {
   encOuvert = id;
   cfg.encarts.forEach(en => {
     const o = en.id === id, p = document.getElementById('enc-p-' + en.id), b = document.getElementById('enc-b-' + en.id);
     if (!p) return;
-    p.classList.toggle('ouvert', o); b.setAttribute('aria-expanded', String(o)); b.textContent = (o ? '▾ ' : '▸ ') + en.titre;
+    p.classList.toggle('ouvert', o); b.setAttribute('aria-expanded', String(o)); b.textContent = (o ? '▾ ' : '▸ ') + titreEnc(en);
     if (en.elts.includes('liste')) setListe(o);   // la liste des points s'affiche avec son panneau
   });
 }
-function majFleches() { cfg.encarts.forEach(en => { const t = document.getElementById('enc-a-' + en.id); if (t) t.textContent = (voletAction === en.elts[0] ? '▾ ' : '▸ ') + en.titre; }); }   // flèche des boutons d'action : ▾ quand leur volet est ouvert
+const titreEnc = en => en.titre.replace(/\{n\}/g, nbVis).replace(/\{total\}/g, nbTot);   // {n} : points affichés, {total} : tous les points
+function majTitres() {   // met à jour les titres qui contiennent {n} ou {total}
+  cfg.encarts.forEach(en => { const b = document.getElementById('enc-b-' + en.id), h = document.getElementById('enc-h-' + en.id); if (b) b.textContent = (encOuvert === en.id ? '▾ ' : '▸ ') + titreEnc(en); if (h) h.textContent = titreEnc(en); });
+  majFleches();
+}
+function lancerAction(k) { if (voletAction === k) { if (k === 'iti') fermerIti(); else fermerProg(); return; } const e = document.getElementById(ELEM_ID[k]); if (e) e.click(); }   // 2e clic : referme le volet
+function majFleches() { cfg.encarts.forEach(en => { const t = document.getElementById('enc-a-' + en.id); if (t) t.textContent = (voletAction === en.elts[0] ? '▾ ' : '▸ ') + titreEnc(en); }); }   // flèche des boutons d'action : ▾ quand leur volet est ouvert
 function dessinerEncarts() {   // range les éléments dans leurs encarts (reconstruit seulement si la configuration des encarts a changé)
   const reserve = document.getElementById('reserve'), sig = JSON.stringify([cfg.encarts, cfg.disposition]);
   if (!reserve || sig === sigEnc) return; sigEnc = sig; encartsVus = []; hotesEnc = {};
   Object.values(ELEM_ID).forEach(id => { const e = document.getElementById(id); if (e) reserve.appendChild(e); });
   Object.values(zonesEnc).forEach(z => { z.innerHTML = ''; });
-  const dp = cfg.disposition, zone = zoneEnc(dp.pos); zone.className = 'zone-enc zp-' + dp.pos + ' ' + dp.sens;   // tous les encarts se suivent dans une même zone
+  const dp = cfg.disposition, zone = zoneEnc(dp.pos); zone.className = 'zone-enc zp-' + dp.pos + ' ' + dp.sens + (dp.unif ? ' unif' : '');
+  zone.style.cssText = dp.unif ? [dp.uw && (dp.sens === 'h' ? `grid-auto-columns:${dp.uw}px` : `grid-template-columns:${dp.uw}px`), dp.uh && `grid-auto-rows:${dp.uh}px`].filter(Boolean).join(';') : '';   // tous les encarts se suivent dans une même zone
   cfg.encarts.forEach(en => {
     // Un encart avec titre « pliable » est un bouton ; ses éléments s'ouvrent dans un panneau à part (sous le bouton, ou sur le bord de l'écran). Sinon c'est un bloc toujours visible.
     const sec = document.createElement('section'), corps = document.createElement('div'), bc = en.bordc || 'var(--line)', bouton = en.pliable && en.titre;
@@ -712,31 +722,33 @@ function dessinerEncarts() {   // range les éléments dans leurs encarts (recon
     if (en.titre) {
       const t = document.createElement(bouton ? 'button' : 'div');
       t.className = 'enc-t'; t.style.cssText = `font-weight:${en.tGras ? 700 : 400};font-style:${en.tItal ? 'italic' : 'normal'}${en.tTaille ? ';font-size:' + en.tTaille + 'px' : ''}${en.tCoul ? ';color:' + en.tCoul : ''}`;
-      const action = bouton && en.elts.length === 1 && ACTIONS.includes(en.elts[0]);   // un seul bouton d'action : le bouton de l'encart le déclenche directement
-      if (action) {
-        const k = en.elts[0]; t.type = 'button'; t.id = 'enc-a-' + en.id; t.textContent = '▸ ' + en.titre;
-        t.addEventListener('click', () => { ouvrirEnc(null); if (voletAction === k) { if (k === 'iti') fermerIti(); else fermerProg(); return; } const e = document.getElementById(ELEM_ID[k]); if (e) e.click(); });
+      if (estAction(en)) {   // un seul bouton d'action dans l'encart : le bouton de l'encart le déclenche directement
+        t.type = 'button'; t.id = 'enc-a-' + en.id; t.textContent = '▸ ' + titreEnc(en); t.addEventListener('click', () => { ouvrirEnc(null); lancerAction(en.elts[0]); });
       }
-      else if (bouton) { t.id = 'enc-b-' + en.id; t.type = 'button'; t.textContent = '▸ ' + en.titre; t.setAttribute('aria-expanded', 'false'); t.addEventListener('click', () => ouvrirEnc(encOuvert === en.id ? null : en.id)); } else t.textContent = en.titre;
+      else if (bouton) { t.id = 'enc-b-' + en.id; t.type = 'button'; t.textContent = '▸ ' + titreEnc(en); t.setAttribute('aria-expanded', 'false'); t.addEventListener('click', () => ouvrirEnc(encOuvert === en.id ? null : en.id)); } else { t.id = 'enc-h-' + en.id; t.textContent = titreEnc(en); }
       sec.appendChild(t);
     }
-    const direct = bouton && en.elts.length === 1 && ACTIONS.includes(en.elts[0]);
+    const direct = estAction(en);
     if (!direct) en.elts.forEach((k, i) => { const e = document.getElementById(ELEM_ID[k]); if (e) { e.style.order = i; corps.appendChild(e); hotesEnc[k] = corps; } });
     if (direct) { /* rien à ouvrir */ } else if (bouton) {
       const p = document.createElement('div'), bord = en.ouv !== 'bas';
-      p.id = 'enc-p-' + en.id; p.className = 'enc-p ouv-' + en.ouv + (dp.pos[0] === 'b' ? ' vers-haut' : '') + (['hd', 'bd', 'md'].includes(dp.pos) ? ' ar' : '');
+      p.id = 'enc-p-' + en.id; p.className = 'enc-p ouv-' + en.ouv + (dp.pos[0] === 'b' ? ' vers-haut' : '') + (['hd', 'bd'].includes(dp.pos) ? ' ar' : '');
       p.style.cssText = `background:${en.fondc || 'var(--paper)'};width:${bord ? `min(${en.larg || 360}px,100%)` : (en.larg || 320) + 'px'}${en.haut ? `;height:${en.haut}px${bord ? ';bottom:auto' : ''}` : ''}`;
       p.addEventListener('click', e => { if (e.target.closest && e.target.closest('#prog-btn, #iti-btn')) ouvrirEnc(null); });   // ces boutons ouvrent leur propre volet
       if (bord) {
         const h = document.createElement('div'), ht = document.createElement('span'), x = document.createElement('button');
-        h.className = 'enc-ph'; ht.textContent = en.titre; x.className = 'enc-x'; x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', () => ouvrirEnc(null));
+        h.className = 'enc-ph'; ht.id = 'enc-h-' + en.id; ht.textContent = titreEnc(en); x.className = 'enc-x'; x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', () => ouvrirEnc(null));
         h.appendChild(ht); h.appendChild(x); p.appendChild(h);
       }
       p.appendChild(corps); (bord ? zoneEnc(en.ouv === 'droite' ? 'vd' : 'vg') : sec).appendChild(p);
     } else sec.appendChild(corps);
     zone.appendChild(sec); encartsVus.push({ sec, ks:en.elts });
   });
-  if (encOuvert === undefined) encOuvert = (cfg.encarts.find(e => e.ouvD && e.pliable && e.titre) || {}).id || null;
+  if (encOuvert === undefined) {   // au premier dessin (ou si « ouvert au démarrage » change) : ouvre l'encart demandé
+    const dem = cfg.encarts.find(e => e.ouvD && e.pliable && e.titre);
+    encOuvert = dem && !estAction(dem) ? dem.id : null;
+    if (dem && estAction(dem)) setTimeout(() => { if (voletAction !== dem.elts[0]) lancerAction(dem.elts[0]); }, 0);
+  }
   ouvrirEnc(cfg.encarts.some(e => e.id === encOuvert) ? encOuvert : null); majFleches();
 }
 function appliquerAffichage() {   // éléments du panneau de gauche affichés ou masqués, selon la configuration générale
@@ -816,6 +828,7 @@ function appliquerFiltres() {
     if (ok) { n++; if (!cluster.hasLayer(m)) cluster.addLayer(m); } else if (cluster.hasLayer(m)) cluster.removeLayer(m);
   }
   document.getElementById('count').innerHTML = esc(opt('lib_count', '{n} sur {total} point{s}')).replace(/\{n\}/g, `<strong>${n}</strong>`).replace(/\{total\}/g, marqueurs.size).replace(/\{s\}/g, marqueurs.size > 1 ? 's' : '') + (sansGps ? `<br>${sansGps} sans coordonnées valides` : '') + (progFocus ? `<br><button type="button" class="link" id="prog-x">✕ Carte limitée à « ${esc(progFocus.v)} » (retirer)</button>` : '') ;
+  nbVis = n; nbTot = marqueurs.size; majTitres();
   majListe(); progDessiner();   // l'encart « Suivi » reste à jour même volet fermé
 }
 function icone(d, sel) {
@@ -1164,7 +1177,7 @@ function progDescr(I) {
 }
 function progDessiner() {
   const P = cfg.prog, I = P.inds[progInd] || P.inds[0];
-  const tete = '<div class="fp-tete" style="--niv:var(--accent)"><button type="button" class="fp-fermer" data-p="fermer" aria-label="Fermer">✕</button><h2>Progression</h2></div>';
+  const tete = '<div class="fp-tete" style="--niv:var(--accent)"><button type="button" class="fp-fermer" data-p="fermer" aria-label="Fermer">✕</button><h2>' + esc(opt('prog_titre', 'Progression')) + '</h2></div>';
   const sv = document.getElementById('suivi'); if (sv) sv.innerHTML = '';
   if (!I || warnInd(I)) { progPanel.innerHTML = tete + '<div class="fp-corps"><p class="vide">Aucun indicateur complet. Ouvrez « Configurer le widget », onglet Progression, et choisissez le mode de calcul et ses colonnes.</p></div>'; return; }
   const lignes = P.suivre ? [...marqueurs.values()].filter(m => cluster.hasLayer(m)).map(m => m._cifi.vals) : (donnees.size ? [...donnees.values()] : [...marqueurs.values()].map(m => m._cifi.vals));
@@ -1246,7 +1259,7 @@ function itiDessiner() {
   const legDe = k => iti.legs.length ? iti.legs[iti.depart ? k : k - 1] : undefined;
   const info = l => l === undefined ? '' : l === null ? '<small>Trajet non calculé</small>' : `<small>${fmtDist(l.d)} · ${fmtDuree(l.t)}</small>`;
   const retourLeg = iti.retour && iti.legs.length ? iti.legs[iti.legs.length - 1] : undefined;
-  itiPanel.innerHTML = `<div class="fp-tete" style="--niv:var(--accent)"><button type="button" class="fp-fermer" data-i="fermer" aria-label="Fermer">✕</button><h2>Itinéraire</h2></div>
+  itiPanel.innerHTML = `<div class="fp-tete" style="--niv:var(--accent)"><button type="button" class="fp-fermer" data-i="fermer" aria-label="Fermer">✕</button><h2>${esc(opt('iti_titre', 'Itinéraire'))}</h2></div>
     <div class="fp-corps">${itiAvert()}
       <div class="iti-ligne"><label><input type="radio" name="itimode" value="car"${iti.mode === 'car' ? ' checked' : ''}> 🚗 Voiture</label><label><input type="radio" name="itimode" value="pedestrian"${iti.mode === 'pedestrian' ? ' checked' : ''}> 🚶 À pied</label></div>
       <label style="font-size:14px"><input type="checkbox" id="iti-retour"${iti.retour ? ' checked' : ''}> Revenir au point de départ</label>
@@ -1468,7 +1481,7 @@ function blocElementsGauche() {
       + (ICO_K.includes(k) ? `<div class="rg-l2"><input type="text" data-o="ico_${k}" value="${esc(opt('ico_' + k, ICO_DEF[k] || ''))}" placeholder="Icône (emoji ou symbole)" style="max-width:170px" aria-label="Icône">${k === 'liste' ? `<input type="text" data-o="ico_liste2" value="${esc(opt('ico_liste2', ''))}" placeholder="Icône quand la liste est ouverte" style="max-width:210px" aria-label="Icône liste ouverte">` : ''}</div>` : '')
       + (AIDE_K.includes(k) ? `<div class="rg-l2"><input type="text" data-o="aide_${k}" value="${esc(opt('aide_' + k, ''))}" placeholder="Aide au survol (facultatif)" style="flex:1;min-width:200px" aria-label="Aide au survol"></div>` : '')
       + ((k === 'liste' || k === 'legende') ? `<div class="rg-l2"><label><input type="checkbox" data-o="ouv_${k}"${(k === 'liste' ? opt('ouv_liste', false) === true : opt('ouv_legende', true) !== false) ? ' checked' : ''}> déplié par défaut</label></div>` : '')
-      + (k === 'iti' ? `<div class="rg-l2"><input type="text" data-o="iti_avert" value="${esc(optBrut('iti_avert', ITI_AVERT))}" placeholder="Avertissement du panneau d’itinéraire (vide = masqué)" style="flex:1;min-width:200px" aria-label="Avertissement"></div><div class="rg-l2"><input type="text" data-o="iti_avert_pied" value="${esc(optBrut('iti_avert_pied', ITI_AVERT_PIED))}" placeholder="Avertissement supplémentaire pour l’itinéraire à pied (vide = masqué)" style="flex:1;min-width:200px" aria-label="Avertissement à pied"></div>${optCase('iti_pos', 'Proposer « Ma position » comme départ')}` : '')
+      + (k === 'iti' ? `<div class="rg-l2"><input type="text" data-o="iti_titre" value="${esc(opt('iti_titre', 'Itinéraire'))}" placeholder="Titre du volet (Itinéraire)" style="flex:1;min-width:200px" aria-label="Titre du volet"></div><div class="rg-l2"><input type="text" data-o="iti_avert" value="${esc(optBrut('iti_avert', ITI_AVERT))}" placeholder="Avertissement du panneau d’itinéraire (vide = masqué)" style="flex:1;min-width:200px" aria-label="Avertissement"></div><div class="rg-l2"><input type="text" data-o="iti_avert_pied" value="${esc(optBrut('iti_avert_pied', ITI_AVERT_PIED))}" placeholder="Avertissement supplémentaire pour l’itinéraire à pied (vide = masqué)" style="flex:1;min-width:200px" aria-label="Avertissement à pied"></div>${optCase('iti_pos', 'Proposer « Ma position » comme départ')}` : '')
       + (ELT_STYLES[k] || []).map(blocStyleTexte).join('');
     return corps ? `<li>${rgd('el', '', `data-e="${k}"`, elOuverts.has(k), `<span class="rg-nom">${esc(ELTS_GAUCHE[k])}</span>${GEAR}${btns}`, corps)}</li>`
       : `<li><div class="rg-simple"><span class="rg-nom">${esc(ELTS_GAUCHE[k])}</span>${btns}</div></li>`;
@@ -1483,10 +1496,10 @@ function blocEncarts() {
     const btns = `<span class="rg-btns">${btn('enc-up', E, '▲', 'Monter')}${btn('enc-down', E, '▼', 'Descendre')}${btn('enc-del', E, '✕', 'Supprimer l’encart')}</span>`;
     const els = e.elts.map(k => { const X = `data-e="${i}:${k}"`; return `<li><div class="rg-simple"><span class="rg-nom">${esc(ELEM_ENC[k])}</span><span class="rg-btns">${btn('en-el-up', X, '▲', 'Monter')}${btn('en-el-down', X, '▼', 'Descendre')}${btn('en-el-del', X, '✕', 'Retirer de l’encart')}</span></div></li>`; }).join('');
     const autres = Object.keys(ELEM_ENC).filter(k => !e.elts.includes(k)).map(k => [`${i}:${k}`, ELEM_ENC[k] + (place.has(k) ? ' (déplacer ici)' : '')]);
-    const direct = e.pliable && e.titre && e.elts.length === 1 && ACTIONS.includes(e.elts[0]);   // bouton d'action : pas de panneau à régler
-    const corps = `<div class="rg-l2"><input type="text" ${D} data-f="titre" value="${esc(e.titre)}" placeholder="Titre de l’encart (facultatif)" style="flex:1;min-width:150px" aria-label="Titre de l’encart"></div>
-      <div class="rg-l2">${ck('pliable', 'Bouton (demande un titre)')}${direct ? '' : ck('ouvD', 'Ouvert au démarrage')}</div>
-      ${direct ? '<p class="vide" style="font-size:12px;margin:0">Cet encart est un bouton d’action : un clic lance directement l’action, sans panneau.</p>' : `<div class="rg-l2"><label>Le panneau s’ouvre ${selectHtml(`${D} data-f="ouv"`, Object.entries(OUV), e.ouv)}</label></div>`}
+    const direct = estAction(e);   // un seul bouton d'action : pas de panneau à régler
+    const corps = `<div class="rg-l2"><input type="text" ${D} data-f="titre" value="${esc(e.titre)}" placeholder="Titre (variables : {n} points affichés, {total} au total)" style="flex:1;min-width:150px" aria-label="Titre de l’encart"></div>
+      <div class="rg-l2">${ck('pliable', 'Bouton')}${ck('ouvD', 'Ouvert au démarrage')}</div>
+      ${direct ? '' : `<div class="rg-l2"><label>Le panneau s’ouvre ${selectHtml(`${D} data-f="ouv"`, Object.entries(OUV), e.ouv)}</label></div>`}
       ${direct ? '' : `<div class="rg-l2"><label>Éléments ${selectHtml(`${D} data-f="sens"`, [['v', 'les uns sous les autres'], ['h', 'côte à côte']], e.sens)}</label></div>`}
       ${direct ? '' : `<div class="rg-l2"><label>Largeur du panneau ${num('larg', 800, 'auto', 80)} px</label><label>Hauteur ${num('haut', 1200, 'auto', 40)} px</label></div>`}
       <div class="rg-sous">Cadre du bouton</div>
@@ -1500,7 +1513,9 @@ function blocEncarts() {
   }).join('');
   const dp = cfg.disposition, D2 = 'data-a="disp"';
   return `<section><h3>Disposition des encarts</h3><div class="rg-l2"><label>Les encarts se suivent ${selectHtml(`${D2} data-f="sens"`, [['h', 'côte à côte'], ['v', 'les uns sous les autres']], dp.sens)}</label></div>
-    <div class="rg-l2"><label>Emplacement sur la carte ${selectHtml(`${D2} data-f="pos"`, Object.entries(ZONES), dp.pos)}</label></div></section>
+    <div class="rg-l2"><label>Emplacement sur la carte ${selectHtml(`${D2} data-f="pos"`, Object.entries(ZONES), dp.pos)}</label></div>
+    <label><input type="checkbox" ${D2} data-f="unif"${dp.unif ? ' checked' : ''}> Même taille pour tous les boutons</label>
+    ${dp.unif ? `<div class="rg-l2"><label>Largeur <input type="number" min="60" max="600" ${D2} data-f="uw" value="${dp.uw || ''}" placeholder="auto" style="width:80px"> px</label><label>Hauteur <input type="number" min="24" max="200" ${D2} data-f="uh" value="${dp.uh || ''}" placeholder="auto" style="width:80px"> px</label></div>` : ''}</section>
     <section><h3>Encarts</h3><p class="vide" style="font-size:12px;margin:0 0 4px">Chaque encart est un petit bloc indépendant. ▲ ▼ changent l’ordre (de gauche à droite), ⚙ ouvre ses réglages.</p>
     <div class="rg-ajout-zone"><button type="button" class="rg-ajout" data-a="enc-add">+ Ajouter un encart</button></div><ul>${lignes}</ul></section>`;
 }
@@ -1590,6 +1605,7 @@ function blocProg() {
   const selV = (at, v, vide) => selectHtml(at, colsOpt(allCols), v, vide);
   const cond = (i, w, k, titre) => { const C = `data-a="pc" data-i="${i}" data-w="${w}"`; return `<div class="rg-sous">${titre}</div><div class="rg-l2">${selCol(`${C} data-f="c"`, k.c)}<select ${C} data-f="op" aria-label="Condition">${OPS.map(([v, t]) => `<option value="${v}"${v === k.op ? ' selected' : ''}>${t}</option>`).join('')}</select>${k.op === 'vide' || k.op === 'rempli' ? '' : `<input type="text" ${C} data-f="v" value="${esc(k.v)}" placeholder="valeur" aria-label="Valeur">`}</div>`; };
   return `<section><h3>Options</h3>
+    <label>Titre du volet <input type="text" data-o="prog_titre" value="${esc(opt('prog_titre', 'Progression'))}" placeholder="Progression"></label>
     <label><input type="checkbox" data-a="pg" data-f="suivre"${P.suivre ? ' checked' : ''}> Calculer sur les points visibles (selon la recherche et les filtres)</label>
     <label><input type="checkbox" data-a="pg" data-f="clic"${P.clic ? ' checked' : ''}> Un clic sur une barre n’affiche sur la carte que les points de cette barre</label>
     <label>Tri des barres <select data-a="pg" data-f="tri">${[['nom', 'Par nom'], ['asc', 'Résultat croissant'], ['desc', 'Résultat décroissant']].map(([v, t]) => `<option value="${v}"${P.tri === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label></section>
@@ -1622,6 +1638,7 @@ function blocBarre() {
   const b = cfg.barre, D = 'data-a="bb"', noms = NOMS_BARRE;
   return `<section><h3>Apparence de la barre</h3>
     <label>Emplacement <select ${D} data-f="pos">${Object.keys(BARRE_POS).map(p => `<option${p === b.pos ? ' selected' : ''}>${p}</option>`).join('')}</select></label>
+    <label>Les boutons se suivent <select ${D} data-f="sens">${[['h', 'côte à côte'], ['v', 'les uns sous les autres']].map(([v, t]) => `<option value="${v}"${v === b.sens ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
     <label>Taille des boutons <input type="number" min="26" max="60" ${D} data-f="taille" value="${b.taille}"> px</label>
     <label>Forme <select ${D} data-f="forme">${[['carre', 'Carré'], ['arrondi', 'Coins arrondis'], ['rond', 'Rond']].map(([v, t]) => `<option value="${v}"${v === b.forme ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
     <label>Fond <input type="color" ${D} data-f="fond" value="${b.fond}"> Icône <input type="color" ${D} data-f="coul" value="${b.coul}"></label>
@@ -1880,7 +1897,7 @@ modal.addEventListener('change', e => {
     case 'pi': { const X = cfg.prog.inds[+t.dataset.i], f = t.dataset.f; if (X) { if (f === 'baseon') X.base.on = t.checked; else X[f] = t.value; } break; }
     case 'pc': { const X = cfg.prog.inds[+t.dataset.i]; if (X) X[t.dataset.w][t.dataset.f] = t.value; break; }
     case 'pp': { const X = cfg.prog.inds[+t.dataset.i]; if (X) { const q = X.paliers[+t.dataset.j]; if (t.dataset.f === 'de') q.de = Math.max(0, Math.min(1000, +t.value || 0)); else q.couleur = t.value; X.paliers.sort((u, v) => u.de - v.de); X.paliers[0].de = 0; } break; }
-    case 'disp': cfg.disposition[t.dataset.f] = t.value; break;
+    case 'disp': cfg.disposition[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (+t.value ? Math.max(+t.min, Math.min(+t.max, +t.value)) : 0) : t.value; break;
     case 'en': { const X = cfg.encarts[+t.dataset.i], f = t.dataset.f; if (X) { X[f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (+t.value ? Math.max(+t.min, Math.min(+t.max, +t.value)) : 0) : t.value; if (f === 'ouvD') encOuvert = undefined; } break; }
     case 'bb': { cfg.barre[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(+t.min, Math.min(+t.max, t.value === '' ? +t.defaultValue : +t.value)) : t.value; break; }
     case 'bb-b': { const x = cfg.barre.boutons.find(y => y.id === t.dataset.e); if (x) x[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; break; }
