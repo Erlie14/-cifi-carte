@@ -297,7 +297,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '100';
+const VERSION = '101';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -1932,7 +1932,7 @@ modal.addEventListener('change', e => {
     case 'cv': R.si[k].v = t.value; break;
     default: return;
   }
-  sauver(['add', 'rc-on', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'rbn', 'rpu-on', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond') || (a === 'et' && ['couleur', 'contenu', 'bord'].includes(t.dataset.f)) || (a === 'pi' && ['mode', 'baseon'].includes(t.dataset.f)) || (a === 'pc' && t.dataset.f === 'op') || (a === 'fl' && ['type', 'tous', 'fond-on', 'coul-on'].includes(t.dataset.f)) || (a === 'st' && /-on$/.test(t.dataset.f)) || (a === 'ms' && ['style', 'rep'].includes(t.dataset.f)) || a === 'sec-type' || a === 'tb-h' || (a === 'lie' && ['table', 'mode', 'afficherVide', 'grp'].includes(t.dataset.f)) || (a === 'tb-c' && t.dataset.f === 'c'));
+  sauver(['add', 'rc-on', 'rc', 'rf', 're', 'rf-on', 'rct', 'cc', 'co', 'cn-on', 'cw-on', 'rbt', 'rbs', 'rbn', 'rpu-on', 'eh-txt-on', 'rd-on'].includes(a) || (a === 'eh' && t.dataset.f === 'fond') || (a === 'et' && ['couleur', 'contenu', 'bord'].includes(t.dataset.f)) || (a === 'pi' && ['mode', 'baseon'].includes(t.dataset.f)) || (a === 'pc' && t.dataset.f === 'op') || (a === 'fl' && ['type', 'tous', 'fond-on', 'coul-on'].includes(t.dataset.f)) || (a === 'st' && /-on$/.test(t.dataset.f)) || (a === 'ms' && ['style', 'rep'].includes(t.dataset.f)) || a === 'sec-type' || a === 'tb-h' || (a === 'lie' && ['table', 'mode', 'afficherVide', 'grp'].includes(t.dataset.f)) || (a === 'tb-c' && t.dataset.f === 'c'));
 });
 modal.addEventListener('input', e => { const t = e.target; if (t.dataset && t.dataset.a === 'pk-q' && picker) { picker.q = t.value; const q = sansAccent(t.value); modal.querySelectorAll('.pk-item').forEach(x => { x.style.display = !q || x.dataset.lib.includes(q) ? '' : 'none'; }); } });
 modal.addEventListener('toggle', e => { const d = e.target; if (!d.matches || !d.matches('details.gen')) return; if (d.dataset.ok === 'el') { if (d.open) elOuverts.add(d.dataset.e); else elOuverts.delete(d.dataset.e); return; } const i = +d.dataset.i, k = d.dataset.ok, o = k === 'col' ? listeDe(d.dataset.g)[i] : k === 'sec' ? cfg.sections[i] : k === 'fl' ? cfg.filtres[i] : k === 'ms' ? cfg.messages[i] : k === 'pi' ? cfg.prog.inds[i] : null; if (o) o.o = d.open; }, true);
