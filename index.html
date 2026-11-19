@@ -191,8 +191,14 @@
   .dans-panneau { box-shadow:none !important; border:0 !important; padding:0 !important; margin-bottom:8px; background:none !important; } .dans-panneau input { width:100%; }
   #liste .sw { display:flex; justify-content:center; flex:none; width:26px; } #liste .pin { border-width:2px; }
   /* encarts en haut de la carte : blocs indépendants rangés côte à côte (ordre, cadre et contenu viennent de la configuration) */
-  #encarts { display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px; max-width:calc(100vw - 24px); pointer-events:none; }
-  #encarts > .encart { pointer-events:auto; width:var(--larg-gauche, 240px); box-sizing:border-box; }
+  .zone-enc { position:absolute; z-index:950; display:flex; gap:8px; pointer-events:none; max-width:calc(100% - 20px); max-height:calc(100% - 40px); }   /* une zone par emplacement ; les encarts s'y rangent dans l'ordre de la configuration */
+  .zone-enc > .encart { pointer-events:auto; flex:none; box-sizing:border-box; width:var(--larg-gauche, 240px); max-width:100%; }
+  .zp-hg, .zp-hc, .zp-hd, .zp-bg, .zp-bc, .zp-bd { flex-flow:row wrap; align-items:flex-start; } .zp-cg, .zp-cd { flex-direction:column; align-items:flex-start; }
+  .zp-hg { top:10px; left:10px; } .zp-hc { top:10px; left:50%; transform:translateX(-50%); justify-content:center; } .zp-hd { top:10px; right:56px; justify-content:flex-end; }
+  .zp-bg { bottom:30px; left:10px; align-items:flex-end; } .zp-bc { bottom:30px; left:50%; transform:translateX(-50%); justify-content:center; align-items:flex-end; } .zp-bd { bottom:30px; right:10px; justify-content:flex-end; align-items:flex-end; }
+  .zp-cg { top:10px; left:10px; } .zp-cd { top:10px; right:56px; align-items:flex-end; }
+  body.cfg-large .zp-hd, body.cfg-large .zp-cd { right:calc(var(--larg-cfg) + 56px); } body.cfg-large .zp-bd { right:calc(var(--larg-cfg) + 10px); }
+  .enc-c.h { flex-flow:row wrap; align-items:flex-start; gap:6px 12px; } .enc-c.h > #b-q { width:200px; } .enc-c.h #filtres { display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px 10px; } .enc-c.h #filtres details.flt-d.menu { min-width:170px; }
   #cfg-secours { pointer-events:auto; } #cfg-secours:empty { display:none; }
   .enc-c { display:flex; flex-direction:column; } .enc-c > * { flex:none; } .enc-c > button.link, .enc-c #b-liste > button.link { align-self:flex-start; margin-top:0; }
   .enc-t { display:block; width:100%; margin:0 0 6px; padding:0; border:0; background:none; font:inherit; font-weight:700; text-align:left; color:inherit; } button.enc-t { cursor:pointer; }
@@ -274,7 +280,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '93';
+const VERSION = '94';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -327,9 +333,11 @@ const ELTS_GAUCHE = { commune:'Recherche de commune (si placée dans le panneau)
 // Encarts en haut de la carte : chacun a un titre, un cadre, un style et la liste des éléments qu'il contient (dans l'ordre).
 const ELEM_ENC = { ...ELTS_GAUCHE, suivi:'Barre de suivi des objectifs' };
 const ELEM_ID = { commune:'commune-zone', q:'b-q', filtres:'filtres', count:'count', liste:'b-liste', suivi:'suivi', prog:'prog-btn', iti:'iti-btn', legende:'legende', version:'b-version' };
+const ZONES = { hg:'Haut à gauche', hc:'Haut au centre', hd:'Haut à droite', bg:'Bas à gauche', bc:'Bas au centre', bd:'Bas à droite', cg:'Colonne à gauche', cd:'Colonne à droite' };
+const borne = (v, mn, mx) => +v ? Math.max(mn, Math.min(mx, +v)) : 0;   // 0 = automatique
 const nEncart = (e, i) => { e = e || {}; return {
   id:String(e.id || 'e' + (i + 1)).replace(/[^\w-]/g, '').slice(0, 20) || 'e' + (i + 1), titre:String(e.titre ?? '').slice(0, 80), pliable:e.pliable !== false, ouvert:e.ouvert !== false,
-  larg:Math.max(0, Math.min(800, +e.larg || 0)), fond:e.fond !== false, fondc:hex(e.fondc), ombre:e.ombre !== false,
+  larg:borne(e.larg, 80, 800), haut:borne(e.haut, 40, 1200), cote:ZONES[e.cote] ? e.cote : 'hg', sens:e.sens === 'h' ? 'h' : 'v', fond:e.fond !== false, fondc:hex(e.fondc), ombre:e.ombre !== false,
   bh:e.bh !== false, bd:e.bd !== false, bb:e.bb !== false, bg:e.bg !== false, bordc:hex(e.bordc), borde:Math.max(0, Math.min(6, e.borde === undefined ? 1 : (+e.borde || 0))),
   tTaille:Math.max(0, Math.min(40, +e.tTaille || 0)), tGras:e.tGras !== false, tItal:e.tItal === true, tCoul:hex(e.tCoul),
   elts:(Array.isArray(e.elts) ? e.elts : []).filter((k, j, t) => ELEM_ENC[k] && t.indexOf(k) === j) }; };
@@ -542,7 +550,7 @@ function montrer(m, cb) { if (cluster.zoomToShowLayer) montrer(m, cb); else { ma
 
 const haut = L.control({ position:'topleft' });
 haut.onAdd = () => {
-  const d = L.DomUtil.create('div', ''); d.id = 'encarts';   // les encarts sont construits par dessinerEncarts() ; en attendant, tous les éléments sont rangés dans la réserve cachée
+  const d = L.DomUtil.create('div', ''); d.id = 'support';   // les encarts sont construits par dessinerEncarts() ; en attendant, tous les éléments sont rangés dans la réserve cachée
   d.innerHTML = `<div id="reserve" hidden><div id="commune-zone"></div><div id="b-q" class="b-q"><input type="search" id="q" placeholder="Rechercher un nom…" aria-label="Rechercher un point"><select id="q-champ" aria-label="Rechercher dans" style="display:none"></select><div id="q-sug" class="sug" role="listbox" style="display:none"></div></div><div id="filtres"></div><div class="count" id="count"></div>
     <div id="b-liste"><button class="link" id="liste-btn" type="button" aria-expanded="false">Afficher la liste des points</button><div id="liste" style="display:none"></div></div>
     <div id="suivi"></div><button class="link" id="prog-btn" type="button">📊 Voir la progression</button><button class="link" id="iti-btn" type="button">🧭 Préparer un itinéraire</button>
@@ -654,16 +662,17 @@ function appliquerStyles() {   // couleur, fond (en pastille), taille, gras, ita
   }).join('\n');
 }
 const avecIco = (k, txt) => { const i = opt('ico_' + k, ICO_DEF[k] || ''); return (i ? i + ' ' : '') + txt; };
-let sigEnc = '', encartsVus = [], hotesEnc = {}; const etatEnc = new Map();
+let sigEnc = '', encartsVus = [], hotesEnc = {}, zonesEnc = {}; const etatEnc = new Map();
+const zoneEnc = c => zonesEnc[c] || (zonesEnc[c] = Object.assign(document.createElement('div'), { className:'zone-enc zp-' + c }), document.body.appendChild(zonesEnc[c]), zonesEnc[c]);
 function dessinerEncarts() {   // range les éléments dans leurs encarts (reconstruit seulement si la configuration des encarts a changé)
-  const zone = document.getElementById('encarts'), reserve = document.getElementById('reserve'), sig = JSON.stringify(cfg.encarts);
-  if (!zone || !reserve || sig === sigEnc) return; sigEnc = sig; encartsVus = []; hotesEnc = {};
+  const reserve = document.getElementById('reserve'), sig = JSON.stringify(cfg.encarts);
+  if (!reserve || sig === sigEnc) return; sigEnc = sig; encartsVus = []; hotesEnc = {};
   Object.values(ELEM_ID).forEach(id => { const e = document.getElementById(id); if (e) reserve.appendChild(e); });
-  zone.querySelectorAll('.encart').forEach(x => x.remove());
+  Object.values(zonesEnc).forEach(z => { z.innerHTML = ''; });
   cfg.encarts.forEach(en => {
     const sec = document.createElement('section'), corps = document.createElement('div'), bc = en.bordc || 'var(--line)', pliable = en.pliable && en.titre;
-    sec.className = 'panel encart'; sec.id = 'enc-' + en.id; corps.className = 'enc-c';
-    const st = [en.larg ? `width:${en.larg}px` : '', `background:${en.fond ? en.fondc || 'var(--paper)' : 'transparent'}`, `box-shadow:${en.ombre ? '0 2px 8px #0002' : 'none'}`];
+    sec.className = 'panel encart'; sec.id = 'enc-' + en.id; corps.className = 'enc-c' + (en.sens === 'h' ? ' h' : '');
+    const st = [en.larg ? `width:${en.larg}px` : en.sens === 'h' ? 'width:fit-content' : '', en.haut ? `height:${en.haut}px;overflow:auto` : '', `background:${en.fond ? en.fondc || 'var(--paper)' : 'transparent'}`, `box-shadow:${en.ombre ? '0 2px 8px #0002' : 'none'}`];
     [['bh', 'top'], ['bd', 'right'], ['bb', 'bottom'], ['bg', 'left']].forEach(([k, c]) => st.push(`border-${c}:${en[k] && en.borde ? en.borde + 'px solid ' + bc : '0'}`));
     sec.style.cssText = st.filter(Boolean).join(';');
     if (en.titre) {
@@ -676,7 +685,7 @@ function dessinerEncarts() {   // range les éléments dans leurs encarts (recon
       sec.appendChild(t);
     }
     en.elts.forEach((k, i) => { const e = document.getElementById(ELEM_ID[k]); if (e) { e.style.order = i; corps.appendChild(e); hotesEnc[k] = corps; } });
-    sec.appendChild(corps); zone.appendChild(sec); encartsVus.push({ sec, ks:en.elts });
+    sec.appendChild(corps); zoneEnc(en.cote).appendChild(sec); encartsVus.push({ sec, ks:en.elts });
   });
 }
 function appliquerAffichage() {   // éléments du panneau de gauche affichés ou masqués, selon la configuration générale
@@ -1419,13 +1428,15 @@ function blocEncarts() {
   const place = new Set(cfg.encarts.flatMap(e => e.elts));
   const lignes = cfg.encarts.map((e, i) => {
     const E = `data-i="${i}"`, D = `data-a="en" ${E}`, ck = (f, t) => `<label><input type="checkbox" ${D} data-f="${f}"${e[f] ? ' checked' : ''}> ${t}</label>`;
-    const num = (f, mx, vide) => `<input type="number" min="0" max="${mx}" ${D} data-f="${f}" value="${e[f] || ''}" placeholder="${vide}" style="width:80px">`, coul = (f, def, lab) => `<input type="color" ${D} data-f="${f}" value="${e[f] || def}" aria-label="${lab}">`;
+    const num = (f, mx, vide, mn = 0) => `<input type="number" min="${mn}" max="${mx}" ${D} data-f="${f}" value="${e[f] || ''}" placeholder="${vide}" style="width:80px">`, coul = (f, def, lab) => `<input type="color" ${D} data-f="${f}" value="${e[f] || def}" aria-label="${lab}">`;
     const btns = `<span class="rg-btns">${btn('enc-up', E, '▲', 'Monter')}${btn('enc-down', E, '▼', 'Descendre')}${btn('enc-del', E, '✕', 'Supprimer l’encart')}</span>`;
     const els = e.elts.map(k => { const X = `data-e="${i}:${k}"`; return `<li><div class="rg-simple"><span class="rg-nom">${esc(ELEM_ENC[k])}</span><span class="rg-btns">${btn('en-el-up', X, '▲', 'Monter')}${btn('en-el-down', X, '▼', 'Descendre')}${btn('en-el-del', X, '✕', 'Retirer de l’encart')}</span></div></li>`; }).join('');
     const autres = Object.keys(ELEM_ENC).filter(k => !e.elts.includes(k)).map(k => [`${i}:${k}`, ELEM_ENC[k] + (place.has(k) ? ' (déplacer ici)' : '')]);
     const corps = `<div class="rg-l2"><input type="text" ${D} data-f="titre" value="${esc(e.titre)}" placeholder="Titre de l’encart (facultatif)" style="flex:1;min-width:150px" aria-label="Titre de l’encart"></div>
       <div class="rg-l2">${ck('pliable', 'Pliable (demande un titre)')}${ck('ouvert', 'Déplié au départ')}</div>
-      <div class="rg-l2"><label>Largeur ${num('larg', 800, 'auto')} px</label></div>
+      <div class="rg-l2"><label>Emplacement ${selectHtml(`${D} data-f="cote"`, Object.entries(ZONES), e.cote)}</label></div>
+      <div class="rg-l2"><label>Éléments ${selectHtml(`${D} data-f="sens"`, [['v', 'les uns sous les autres'], ['h', 'côte à côte']], e.sens)}</label></div>
+      <div class="rg-l2"><label>Largeur ${num('larg', 800, 'auto', 80)} px</label><label>Hauteur ${num('haut', 1200, 'auto', 40)} px</label></div>
       <div class="rg-sous">Cadre</div>
       <div class="rg-l2">${ck('fond', 'Fond')}${coul('fondc', '#ffffff', 'Couleur du fond')}${ck('ombre', 'Ombre')}</div>
       <div class="rg-l2"><span>Bordure :</span>${ck('bh', 'haut')}${ck('bd', 'droite')}${ck('bb', 'bas')}${ck('bg', 'gauche')}</div>
@@ -1814,7 +1825,7 @@ modal.addEventListener('change', e => {
     case 'pi': { const X = cfg.prog.inds[+t.dataset.i], f = t.dataset.f; if (X) { if (f === 'baseon') X.base.on = t.checked; else X[f] = t.value; } break; }
     case 'pc': { const X = cfg.prog.inds[+t.dataset.i]; if (X) X[t.dataset.w][t.dataset.f] = t.value; break; }
     case 'pp': { const X = cfg.prog.inds[+t.dataset.i]; if (X) { const q = X.paliers[+t.dataset.j]; if (t.dataset.f === 'de') q.de = Math.max(0, Math.min(1000, +t.value || 0)); else q.couleur = t.value; X.paliers.sort((u, v) => u.de - v.de); X.paliers[0].de = 0; } break; }
-    case 'en': { const X = cfg.encarts[+t.dataset.i], f = t.dataset.f; if (X) { X[f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(+t.min, Math.min(+t.max, +t.value || 0)) : t.value; if (f === 'ouvert') etatEnc.delete(X.id); } break; }
+    case 'en': { const X = cfg.encarts[+t.dataset.i], f = t.dataset.f; if (X) { X[f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (+t.value ? Math.max(+t.min, Math.min(+t.max, +t.value)) : 0) : t.value; if (f === 'ouvert') etatEnc.delete(X.id); } break; }
     case 'bb': { cfg.barre[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(+t.min, Math.min(+t.max, t.value === '' ? +t.defaultValue : +t.value)) : t.value; break; }
     case 'bb-b': { const x = cfg.barre.boutons.find(y => y.id === t.dataset.e); if (x) x[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; break; }
     case 'et': { const E = cfg.etiquettes[t.dataset.ek], f = t.dataset.f; if (t.type === 'number') { const n = t.value === '' ? +t.defaultValue : +t.value; E[f] = Math.max(+t.min, Math.min(+t.max, isNaN(n) ? +t.min : n)); } else E[f] = t.value; break; }
