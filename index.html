@@ -198,6 +198,15 @@
   .zp-bg { bottom:30px; left:10px; align-items:flex-end; } .zp-bc { bottom:30px; left:50%; transform:translateX(-50%); justify-content:center; align-items:flex-end; } .zp-bd { bottom:30px; right:10px; justify-content:flex-end; align-items:flex-end; }
   .zp-cg { top:10px; left:10px; } .zp-cd { top:10px; right:56px; align-items:flex-end; }
   body.cfg-large .zp-hd, body.cfg-large .zp-cd { right:calc(var(--larg-cfg) + 56px); } body.cfg-large .zp-bd { right:calc(var(--larg-cfg) + 10px); }
+  .zone-enc > .encart.enc-bouton { position:relative; width:auto; padding:0; }
+  .enc-bouton > .enc-t { margin:0; width:auto; padding:7px 12px; cursor:pointer; white-space:nowrap; }
+  .enc-p { box-sizing:border-box; padding:10px; overflow:auto; max-width:100%; pointer-events:auto; }
+  .enc-p.ouv-bas { display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:5; max-width:calc(100vw - 20px); max-height:70vh; border:1px solid var(--line); box-shadow:0 4px 14px #0003; }
+  .enc-p.ouv-bas.vers-haut { top:auto; bottom:calc(100% + 6px); } .enc-p.ouv-bas.ar { left:auto; right:0; }
+  .enc-p.ouv-droite, .enc-p.ouv-gauche { display:none; position:absolute; top:0; bottom:0; box-shadow:0 0 18px #0003; } .enc-p.ouv-droite { right:0; } .enc-p.ouv-gauche { left:0; }
+  .enc-p.ouvert { display:block; } .enc-ph { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-weight:700; } .enc-x { border:0; background:none; font-size:16px; cursor:pointer; }
+  .enc-p #liste-btn { display:none; } .enc-p #liste { display:block !important; }
+  .zp-vd, .zp-vg { display:block; top:0; bottom:0; max-width:100%; max-height:none; z-index:1090; } .zp-vd { right:0; } .zp-vg { left:0; } body.cfg-large .zp-vd { right:var(--larg-cfg); }
   .enc-c.h { flex-flow:row wrap; align-items:flex-start; gap:6px 12px; } .enc-c.h > #b-q { width:200px; } .enc-c.h #filtres { display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px 10px; } .enc-c.h #filtres details.flt-d.menu { min-width:170px; }
   #cfg-secours { pointer-events:auto; } #cfg-secours:empty { display:none; }
   .enc-c { display:flex; flex-direction:column; } .enc-c > * { flex:none; } .enc-c > button.link, .enc-c #b-liste > button.link { align-self:flex-start; margin-top:0; }
@@ -280,7 +289,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '94';
+const VERSION = '95';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -335,15 +344,16 @@ const ELEM_ENC = { ...ELTS_GAUCHE, suivi:'Barre de suivi des objectifs' };
 const ELEM_ID = { commune:'commune-zone', q:'b-q', filtres:'filtres', count:'count', liste:'b-liste', suivi:'suivi', prog:'prog-btn', iti:'iti-btn', legende:'legende', version:'b-version' };
 const ZONES = { hg:'Haut à gauche', hc:'Haut au centre', hd:'Haut à droite', bg:'Bas à gauche', bc:'Bas au centre', bd:'Bas à droite', cg:'Colonne à gauche', cd:'Colonne à droite' };
 const borne = (v, mn, mx) => +v ? Math.max(mn, Math.min(mx, +v)) : 0;   // 0 = automatique
-const nEncart = (e, i) => { e = e || {}; return {
-  id:String(e.id || 'e' + (i + 1)).replace(/[^\w-]/g, '').slice(0, 20) || 'e' + (i + 1), titre:String(e.titre ?? '').slice(0, 80), pliable:e.pliable !== false, ouvert:e.ouvert !== false,
+const OUV = { bas:'Sous le bouton', droite:'À droite de l’écran', gauche:'À gauche de l’écran' };   // où s'ouvre le panneau d'un encart
+const nEncart = (e, i) => { e = e || {}; const elts = (Array.isArray(e.elts) ? e.elts : []).filter((k, j, t) => ELEM_ENC[k] && t.indexOf(k) === j); return {
+  id:String(e.id || 'e' + (i + 1)).replace(/[^\w-]/g, '').slice(0, 20) || 'e' + (i + 1), titre:String(e.titre ?? '').slice(0, 80), pliable:e.pliable !== false, ouvD:e.ouvD === true, ouv:OUV[e.ouv] ? e.ouv : elts.includes('filtres') ? 'bas' : 'droite',
   larg:borne(e.larg, 80, 800), haut:borne(e.haut, 40, 1200), cote:ZONES[e.cote] ? e.cote : 'hg', sens:e.sens === 'h' ? 'h' : 'v', fond:e.fond !== false, fondc:hex(e.fondc), ombre:e.ombre !== false,
   bh:e.bh !== false, bd:e.bd !== false, bb:e.bb !== false, bg:e.bg !== false, bordc:hex(e.bordc), borde:Math.max(0, Math.min(6, e.borde === undefined ? 1 : (+e.borde || 0))),
   tTaille:Math.max(0, Math.min(40, +e.tTaille || 0)), tGras:e.tGras !== false, tItal:e.tItal === true, tCoul:hex(e.tCoul),
-  elts:(Array.isArray(e.elts) ? e.elts : []).filter((k, j, t) => ELEM_ENC[k] && t.indexOf(k) === j) }; };
+  elts }; };
 const encartsDef = () => {   // encarts de départ ; les éléments déjà retirés dans une ancienne configuration (aff_xxx) n'y figurent pas
   const A = k => opts['aff_' + k] !== false, gr = (id, titre, ks, o) => ({ id, titre, elts:ks.filter(A), ...o });
-  return [gr('e1', 'Filtres', ['commune', 'q', 'filtres', 'count', 'version']), gr('e2', '', ['liste'], { pliable:false }), gr('e3', 'Suivi des objectifs', ['suivi', 'prog']), gr('e4', 'Outils', ['iti', 'legende'])].filter(e => e.elts.length);
+  return [gr('e1', 'Filtres', ['commune', 'q', 'filtres', 'count', 'version']), gr('e2', 'Liste des points', ['liste']), gr('e3', 'Suivi des objectifs', ['suivi', 'prog']), gr('e4', 'Outils', ['iti', 'legende'])].filter(e => e.elts.length);
 };
 const normEncarts = a => {   // identifiants uniques ; un élément n'est que dans un seul encart (le premier)
   const vus = new Set(), ids = new Set();
@@ -592,8 +602,12 @@ haut.onAdd = () => {
   });
   d.querySelector('#filtres').addEventListener('toggle', e => { const t = e.target; if (!t.matches) return; if (t.id === 'filtres-sec') filtresSecOuvert = t.open; else if (t.dataset && t.dataset.c) etatFiltres.set(t.dataset.c, t.open); }, true);
   const fermerMenus = (hors) => document.querySelectorAll('#filtres details.flt-d.menu[open]').forEach(m => { if (!hors || !m.contains(hors)) m.open = false; });
-  document.addEventListener('click', e => fermerMenus(e.target));   // un clic ailleurs ferme les listes déroulantes
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerMenus(null); });
+  document.addEventListener('click', e => {   // un clic ailleurs referme les listes déroulantes et le panneau « sous le bouton »
+    fermerMenus(e.target);
+    const o = cfg.encarts.find(x => x.id === encOuvert), sec = o && o.ouv === 'bas' && document.getElementById('enc-' + o.id);
+    if (sec && !sec.contains(e.target)) ouvrirEnc(null);
+  });   // un clic ailleurs ferme les listes déroulantes
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { fermerMenus(null); ouvrirEnc(null); } });
   d.querySelector('#filtres').addEventListener('input', e => {   // recherche dans une liste déroulante : on masque les valeurs qui ne correspondent pas
     if (e.target.classList.contains('flt-rech')) { const q = sansAccent(e.target.value.trim()); e.target.parentNode.querySelectorAll('label').forEach(l => { l.hidden = !sansAccent(l.textContent).includes(q); }); return; }
     if (e.target.dataset.t === 'curseur') e.target.dispatchEvent(new Event('change', { bubbles:true })); });
@@ -662,31 +676,53 @@ function appliquerStyles() {   // couleur, fond (en pastille), taille, gras, ita
   }).join('\n');
 }
 const avecIco = (k, txt) => { const i = opt('ico_' + k, ICO_DEF[k] || ''); return (i ? i + ' ' : '') + txt; };
-let sigEnc = '', encartsVus = [], hotesEnc = {}, zonesEnc = {}; const etatEnc = new Map();
+let sigEnc = '', encartsVus = [], hotesEnc = {}, zonesEnc = {}, encOuvert;   // encOuvert : l'encart dont le panneau est ouvert (un seul à la fois)
 const zoneEnc = c => zonesEnc[c] || (zonesEnc[c] = Object.assign(document.createElement('div'), { className:'zone-enc zp-' + c }), document.body.appendChild(zonesEnc[c]), zonesEnc[c]);
+function ouvrirEnc(id) {
+  encOuvert = id;
+  cfg.encarts.forEach(en => {
+    const o = en.id === id, p = document.getElementById('enc-p-' + en.id), b = document.getElementById('enc-b-' + en.id);
+    if (!p) return;
+    p.classList.toggle('ouvert', o); b.setAttribute('aria-expanded', String(o)); b.textContent = (o ? '▾ ' : '▸ ') + en.titre;
+    if (en.elts.includes('liste')) setListe(o);   // la liste des points s'affiche avec son panneau
+  });
+}
 function dessinerEncarts() {   // range les éléments dans leurs encarts (reconstruit seulement si la configuration des encarts a changé)
   const reserve = document.getElementById('reserve'), sig = JSON.stringify(cfg.encarts);
   if (!reserve || sig === sigEnc) return; sigEnc = sig; encartsVus = []; hotesEnc = {};
   Object.values(ELEM_ID).forEach(id => { const e = document.getElementById(id); if (e) reserve.appendChild(e); });
   Object.values(zonesEnc).forEach(z => { z.innerHTML = ''; });
   cfg.encarts.forEach(en => {
-    const sec = document.createElement('section'), corps = document.createElement('div'), bc = en.bordc || 'var(--line)', pliable = en.pliable && en.titre;
-    sec.className = 'panel encart'; sec.id = 'enc-' + en.id; corps.className = 'enc-c' + (en.sens === 'h' ? ' h' : '');
-    const st = [en.larg ? `width:${en.larg}px` : en.sens === 'h' ? 'width:fit-content' : '', en.haut ? `height:${en.haut}px;overflow:auto` : '', `background:${en.fond ? en.fondc || 'var(--paper)' : 'transparent'}`, `box-shadow:${en.ombre ? '0 2px 8px #0002' : 'none'}`];
+    // Un encart avec titre « pliable » est un bouton ; ses éléments s'ouvrent dans un panneau à part (sous le bouton, ou sur le bord de l'écran). Sinon c'est un bloc toujours visible.
+    const sec = document.createElement('section'), corps = document.createElement('div'), bc = en.bordc || 'var(--line)', bouton = en.pliable && en.titre;
+    sec.className = 'panel encart' + (bouton ? ' enc-bouton' : ''); sec.id = 'enc-' + en.id; corps.className = 'enc-c' + (en.sens === 'h' ? ' h' : '');
+    const st = [`background:${en.fond ? en.fondc || 'var(--paper)' : 'transparent'}`, `box-shadow:${en.ombre ? '0 2px 8px #0002' : 'none'}`];
     [['bh', 'top'], ['bd', 'right'], ['bb', 'bottom'], ['bg', 'left']].forEach(([k, c]) => st.push(`border-${c}:${en[k] && en.borde ? en.borde + 'px solid ' + bc : '0'}`));
+    if (!bouton) st.push(en.larg ? `width:${en.larg}px` : en.sens === 'h' ? 'width:fit-content' : '', en.haut ? `height:${en.haut}px;overflow:auto` : '');
     sec.style.cssText = st.filter(Boolean).join(';');
     if (en.titre) {
-      const t = document.createElement(pliable ? 'button' : 'div'), ouv = etatEnc.has(en.id) ? etatEnc.get(en.id) : en.ouvert;
+      const t = document.createElement(bouton ? 'button' : 'div');
       t.className = 'enc-t'; t.style.cssText = `font-weight:${en.tGras ? 700 : 400};font-style:${en.tItal ? 'italic' : 'normal'}${en.tTaille ? ';font-size:' + en.tTaille + 'px' : ''}${en.tCoul ? ';color:' + en.tCoul : ''}`;
-      if (pliable) {
-        const maj = o => { corps.style.display = o ? '' : 'none'; t.setAttribute('aria-expanded', String(o)); t.textContent = (o ? '▾ ' : '▸ ') + en.titre; };
-        t.type = 'button'; maj(ouv); t.addEventListener('click', () => { const o = corps.style.display === 'none'; maj(o); etatEnc.set(en.id, o); });
-      } else t.textContent = en.titre;
+      if (bouton) { t.id = 'enc-b-' + en.id; t.type = 'button'; t.textContent = '▸ ' + en.titre; t.setAttribute('aria-expanded', 'false'); t.addEventListener('click', () => ouvrirEnc(encOuvert === en.id ? null : en.id)); } else t.textContent = en.titre;
       sec.appendChild(t);
     }
     en.elts.forEach((k, i) => { const e = document.getElementById(ELEM_ID[k]); if (e) { e.style.order = i; corps.appendChild(e); hotesEnc[k] = corps; } });
-    sec.appendChild(corps); zoneEnc(en.cote).appendChild(sec); encartsVus.push({ sec, ks:en.elts });
+    if (bouton) {
+      const p = document.createElement('div'), bord = en.ouv !== 'bas';
+      p.id = 'enc-p-' + en.id; p.className = 'enc-p ouv-' + en.ouv + (en.cote[0] === 'b' ? ' vers-haut' : '') + (['hd', 'bd', 'cd'].includes(en.cote) ? ' ar' : '');
+      p.style.cssText = `background:${en.fondc || 'var(--paper)'};width:${bord ? `min(${en.larg || 360}px,100%)` : (en.larg || 320) + 'px'}${en.haut ? `;height:${en.haut}px${bord ? ';bottom:auto' : ''}` : ''}`;
+      p.addEventListener('click', e => { if (e.target.closest && e.target.closest('#prog-btn, #iti-btn')) ouvrirEnc(null); });   // ces boutons ouvrent leur propre volet
+      if (bord) {
+        const h = document.createElement('div'), ht = document.createElement('span'), x = document.createElement('button');
+        h.className = 'enc-ph'; ht.textContent = en.titre; x.className = 'enc-x'; x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', () => ouvrirEnc(null));
+        h.appendChild(ht); h.appendChild(x); p.appendChild(h);
+      }
+      p.appendChild(corps); (bord ? zoneEnc(en.ouv === 'droite' ? 'vd' : 'vg') : sec).appendChild(p);
+    } else sec.appendChild(corps);
+    zoneEnc(en.cote).appendChild(sec); encartsVus.push({ sec, ks:en.elts });
   });
+  if (encOuvert === undefined) encOuvert = (cfg.encarts.find(e => e.ouvD && e.pliable && e.titre) || {}).id || null;
+  ouvrirEnc(cfg.encarts.some(e => e.id === encOuvert) ? encOuvert : null);
 }
 function appliquerAffichage() {   // éléments du panneau de gauche affichés ou masqués, selon la configuration générale
   const A = k => opt('aff_' + k, true) !== false, show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
@@ -1433,11 +1469,12 @@ function blocEncarts() {
     const els = e.elts.map(k => { const X = `data-e="${i}:${k}"`; return `<li><div class="rg-simple"><span class="rg-nom">${esc(ELEM_ENC[k])}</span><span class="rg-btns">${btn('en-el-up', X, '▲', 'Monter')}${btn('en-el-down', X, '▼', 'Descendre')}${btn('en-el-del', X, '✕', 'Retirer de l’encart')}</span></div></li>`; }).join('');
     const autres = Object.keys(ELEM_ENC).filter(k => !e.elts.includes(k)).map(k => [`${i}:${k}`, ELEM_ENC[k] + (place.has(k) ? ' (déplacer ici)' : '')]);
     const corps = `<div class="rg-l2"><input type="text" ${D} data-f="titre" value="${esc(e.titre)}" placeholder="Titre de l’encart (facultatif)" style="flex:1;min-width:150px" aria-label="Titre de l’encart"></div>
-      <div class="rg-l2">${ck('pliable', 'Pliable (demande un titre)')}${ck('ouvert', 'Déplié au départ')}</div>
+      <div class="rg-l2">${ck('pliable', 'Bouton qui ouvre un panneau (demande un titre)')}${ck('ouvD', 'Ouvert au démarrage')}</div>
+      <div class="rg-l2"><label>Le panneau s’ouvre ${selectHtml(`${D} data-f="ouv"`, Object.entries(OUV), e.ouv)}</label></div>
       <div class="rg-l2"><label>Emplacement ${selectHtml(`${D} data-f="cote"`, Object.entries(ZONES), e.cote)}</label></div>
       <div class="rg-l2"><label>Éléments ${selectHtml(`${D} data-f="sens"`, [['v', 'les uns sous les autres'], ['h', 'côte à côte']], e.sens)}</label></div>
-      <div class="rg-l2"><label>Largeur ${num('larg', 800, 'auto', 80)} px</label><label>Hauteur ${num('haut', 1200, 'auto', 40)} px</label></div>
-      <div class="rg-sous">Cadre</div>
+      <div class="rg-l2"><label>Largeur du panneau ${num('larg', 800, 'auto', 80)} px</label><label>Hauteur ${num('haut', 1200, 'auto', 40)} px</label></div>
+      <div class="rg-sous">Cadre du bouton</div>
       <div class="rg-l2">${ck('fond', 'Fond')}${coul('fondc', '#ffffff', 'Couleur du fond')}${ck('ombre', 'Ombre')}</div>
       <div class="rg-l2"><span>Bordure :</span>${ck('bh', 'haut')}${ck('bd', 'droite')}${ck('bb', 'bas')}${ck('bg', 'gauche')}</div>
       <div class="rg-l2">${coul('bordc', '#d5dbe3', 'Couleur de la bordure')}<label>Épaisseur <input type="number" min="0" max="6" ${D} data-f="borde" value="${e.borde}" style="width:60px"> px</label></div>
@@ -1825,7 +1862,7 @@ modal.addEventListener('change', e => {
     case 'pi': { const X = cfg.prog.inds[+t.dataset.i], f = t.dataset.f; if (X) { if (f === 'baseon') X.base.on = t.checked; else X[f] = t.value; } break; }
     case 'pc': { const X = cfg.prog.inds[+t.dataset.i]; if (X) X[t.dataset.w][t.dataset.f] = t.value; break; }
     case 'pp': { const X = cfg.prog.inds[+t.dataset.i]; if (X) { const q = X.paliers[+t.dataset.j]; if (t.dataset.f === 'de') q.de = Math.max(0, Math.min(1000, +t.value || 0)); else q.couleur = t.value; X.paliers.sort((u, v) => u.de - v.de); X.paliers[0].de = 0; } break; }
-    case 'en': { const X = cfg.encarts[+t.dataset.i], f = t.dataset.f; if (X) { X[f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (+t.value ? Math.max(+t.min, Math.min(+t.max, +t.value)) : 0) : t.value; if (f === 'ouvert') etatEnc.delete(X.id); } break; }
+    case 'en': { const X = cfg.encarts[+t.dataset.i], f = t.dataset.f; if (X) { X[f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (+t.value ? Math.max(+t.min, Math.min(+t.max, +t.value)) : 0) : t.value; if (f === 'ouvD') encOuvert = undefined; } break; }
     case 'bb': { cfg.barre[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? Math.max(+t.min, Math.min(+t.max, t.value === '' ? +t.defaultValue : +t.value)) : t.value; break; }
     case 'bb-b': { const x = cfg.barre.boutons.find(y => y.id === t.dataset.e); if (x) x[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; break; }
     case 'et': { const E = cfg.etiquettes[t.dataset.ek], f = t.dataset.f; if (t.type === 'number') { const n = t.value === '' ? +t.defaultValue : +t.value; E[f] = Math.max(+t.min, Math.min(+t.max, isNaN(n) ? +t.min : n)); } else E[f] = t.value; break; }
