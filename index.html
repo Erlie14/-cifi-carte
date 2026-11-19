@@ -127,7 +127,7 @@
   #filtres details.flt-d.menu > summary::after { content:'▾'; }
   #filtres details.flt-d.menu > summary::-webkit-details-marker { display:none; }
   #filtres label[hidden] { display:none; }
-  #filtres .flt-eff { border:0; background:none; color:var(--bleu, #000091); text-decoration:underline; cursor:pointer; padding:0 0 4px; font:inherit; }
+  #filtres .flt-eff { border:0; background:none; color:var(--bleu, #000091); text-decoration:underline; cursor:pointer; padding:4px 6px 6px 0; margin-right:18px; font:inherit; }
   #filtres .flt-rech { width:100%; box-sizing:border-box; margin:2px 0 4px; padding:5px 8px; border:1px solid var(--line); }
   #filtres details.flt-d.menu > .liste { position:absolute; left:0; right:0; z-index:5; max-height:220px; background:#fff; border:1px solid var(--line); box-shadow:0 2px 8px #0002; padding:4px 8px; }
   .rg-corps label input[type=text] { width:100%; margin:4px 0 0; box-sizing:border-box; }
@@ -206,7 +206,7 @@
   .zone-enc .enc-t { background:none; border:0; box-shadow:none; }
   .enc-bouton > .enc-t { margin:0; width:auto; padding:7px 12px; cursor:pointer; white-space:nowrap; }
   .enc-p { box-sizing:border-box; padding:10px; overflow:auto; max-width:100%; pointer-events:auto; }
-  .enc-p.ouv-bas { display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:5; max-width:calc(100vw - 20px); max-height:70vh; border:1px solid var(--line); box-shadow:0 4px 14px #0003; }
+  .enc-p.ouv-bas { display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:5; max-width:calc(100vw - 20px); max-height:70vh; border:3px solid #4a4a4a; padding-bottom:14px; box-shadow:0 4px 14px #0003; }
   .enc-p.ouv-bas.vers-haut { top:auto; bottom:calc(100% + 6px); } .enc-p.ouv-bas.ar { left:auto; right:0; }
   .enc-p.ouv-droite, .enc-p.ouv-gauche { display:none; position:absolute; top:0; bottom:0; box-shadow:0 0 18px #0003; } .enc-p.ouv-droite { right:0; } .enc-p.ouv-gauche { left:0; }
   .enc-p.ouvert { display:block; } .enc-p.ouv-droite.ouvert, .enc-p.ouv-gauche.ouvert { display:flex; flex-direction:column; }
@@ -299,7 +299,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '107';
+const VERSION = '108';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -348,10 +348,10 @@ const nRegle = r => {
     bulle:{ t:bt === 'signal' ? '' : bt, src:b.src || '', e:b.e || '', c:b.c || '', couleur:hc(b.couleur), nf:b.nf === true, f:['carre', 'arrondi', 'rond'].includes(b.f) ? b.f : 'carre' },
     pulse:{ on:pu.on === true, couleur:hc(pu.couleur), rythme:['lent', 'normal', 'rapide'].includes(pu.rythme) ? pu.rythme : 'normal' } };
 };
-const ELTS_GAUCHE = { commune:'Recherche de commune (si placée dans le panneau)', q:'Recherche par nom', filtres:'Filtres', count:'Nombre de points affichés', version:'Numéro de version', liste:'Liste des points', iti:'Bouton « Préparer un itinéraire »', prog:'Bouton « Voir la progression »', legende:'Légende' };
+const ELTS_GAUCHE = { commune:'Recherche de commune (si placée dans le panneau)', q:'Recherche par nom', filtres:'Filtres', count:'Nombre de points affichés', liste:'Liste des points', iti:'Bouton « Préparer un itinéraire »', prog:'Bouton « Voir la progression »', legende:'Légende' };
 // Encarts en haut de la carte : chacun a un titre, un cadre, un style et la liste des éléments qu'il contient (dans l'ordre).
 const ELEM_ENC = { ...ELTS_GAUCHE, suivi:'Barre de suivi des objectifs' };
-const ELEM_ID = { commune:'commune-zone', q:'b-q', filtres:'filtres', count:'count', liste:'b-liste', suivi:'suivi', prog:'prog-btn', iti:'iti-btn', legende:'legende', version:'b-version' };
+const ELEM_ID = { commune:'commune-zone', q:'b-q', filtres:'filtres', count:'count', liste:'b-liste', suivi:'suivi', prog:'prog-btn', iti:'iti-btn', legende:'legende' };
 const ZONES = { hg:'Haut à gauche', hc:'Haut au centre', hd:'Haut à droite', bg:'Bas à gauche', bc:'Bas au centre', bd:'Bas à droite' };   // où se place l'ensemble des encarts
 const nDisp = d => { d = d || {}; return { sens:d.sens === 'v' ? 'v' : 'h', pos:ZONES[d.pos] ? d.pos : 'hg', unif:d.unif === true, uw:borne(d.uw, 60, 600), uh:borne(d.uh, 24, 200) }; };   // sens : h = côte à côte, v = les uns sous les autres
 const borne = (v, mn, mx) => +v ? Math.max(mn, Math.min(mx, +v)) : 0;   // 0 = automatique
@@ -372,7 +372,7 @@ const normEncarts = a => {   // identifiants uniques ; un élément n'est que da
   const vus = new Set(), ids = new Set();
   return (Array.isArray(a) ? a : encartsDef()).map(nEncart).map(e => { while (ids.has(e.id)) e.id += 'x'; ids.add(e.id); e.elts = e.elts.filter(k => !vus.has(k) && vus.add(k)); return e; });
 };
-const LIB = { q:['lib_q', 'Rechercher un nom…'], liste:['lib_liste', 'Afficher la liste des points'], iti:['lib_iti', 'Préparer un itinéraire'], prog:['lib_prog', 'Voir la progression'], legende:['lib_legende', 'Légende'], version:['lib_version', 'version'], filtres:['filtres_titre', 'Filtres'], count:['lib_count', '{n} sur {total} point{s}'], commune:['lib_commune', 'Aller à une commune…'] };
+const LIB = { q:['lib_q', 'Rechercher un nom…'], liste:['lib_liste', 'Afficher la liste des points'], iti:['lib_iti', 'Préparer un itinéraire'], prog:['lib_prog', 'Voir la progression'], legende:['lib_legende', 'Légende'], filtres:['filtres_titre', 'Filtres'], count:['lib_count', '{n} sur {total} point{s}'], commune:['lib_commune', 'Aller à une commune…'] };
 const hex = c => /^#[0-9a-f]{6}$/i.test(c || '') ? c : '';
 const nEnt = h => { h = h || {}; return { titre:h.titre || '', sous:h.sous || '', etiq:h.etiq !== false, fond:['neutre', 'point', 'perso'].includes(h.fond) ? h.fond : 'neutre', fondc:hex(h.fondc) || '#f6f8fb', txtc:hex(h.txtc), taille:+h.taille || 0 }; };
 const nDef = d => { d = d || {}; return { couleur:hex(d.couleur) || DEFAUT.couleur, forme:FORMES.includes(d.forme) ? d.forme : DEFAUT.forme, bordc:hex(d.bordc) || DEFAUT.bordc, borde:(d.borde === undefined || d.borde === null || isNaN(+d.borde)) ? DEFAUT.borde : Math.max(0, Math.min(8, +d.borde)) }; };
@@ -389,9 +389,9 @@ const nBarre = b => {
 const nEtq = e => { e = e || {}; return { forme:['point', 'rond', 'goutte', 'carre', 'losange', 'triangle', 'aucune'].includes(e.forme) ? e.forme : 'point', couleur:e.couleur === 'fixe' ? 'fixe' : 'point', coul:hex(e.coul) || '#000091',
   contenu:['point', 'rien', 'texte', 'colonne'].includes(e.contenu) ? e.contenu : 'point', texte:String(e.texte || ''), col:String(e.col || ''), taille:Math.max(12, Math.min(44, +e.taille || 22)), bord:e.bord === 'perso' ? 'perso' : 'point', bordc:hex(e.bordc) || '#ffffff', borde:Math.max(0, Math.min(8, e.borde === undefined ? 2 : (+e.borde || 0))) }; };
 const egalTxt = (a, b) => sansAccent(a ?? '').trim() === sansAccent(b ?? '').trim();
-const STYLES_TXT = { titre:['Titre « Filtres »', '#filtres-titre'], filtre:['Noms des filtres', '#filtres details.flt-d > summary, #filtres label.flt, #filtres .flt-btn'], valeurs:['Valeurs dans les filtres', '#filtres .liste label'], count:['Nombre de points affichés', '#count'], version:['Numéro de version', '#b-version'],
+const STYLES_TXT = { titre:['Titre « Filtres »', '#filtres-titre'], filtre:['Noms des filtres', '#filtres details.flt-d > summary, #filtres label.flt, #filtres .flt-btn'], valeurs:['Valeurs dans les filtres', '#filtres .liste label'], count:['Nombre de points affichés', '#count'],
   bt_liste:['Bouton de la liste des points', '#liste-btn'], bt_iti:['Bouton « Préparer un itinéraire »', '#iti-btn'], bt_prog:['Bouton « Voir la progression »', '#prog-btn'], liste:['Noms dans la liste des points', '#liste button'], legende:['Légende', '#legende, #legende button'] };
-const ELT_STYLES = { filtres:['titre'], count:['count'], version:['version'], liste:['bt_liste', 'liste'], iti:['bt_iti'], prog:['bt_prog'], legende:['legende'] };
+const ELT_STYLES = { filtres:['titre'], count:['count'], liste:['bt_liste', 'liste'], iti:['bt_iti'], prog:['bt_prog'], legende:['legende'] };
 const nTab = t => { t = t || {}; const taille = Math.max(0, Math.min(30, +t.taille || 0)); const heads = (t.heads || []).map(String); return { heads, taille, tailleTh:Math.max(0, Math.min(30, +t.tailleTh || 0)), larg:(t.larg === 'ligne' || t.larg === 'contenu') ? 'ligne' : 'auto', vides:t.vides !== false, rows:(t.rows || []).map(r => ({ cells:heads.map((h, j) => { const x = ((r && r.cells) || [])[j] || {}; return { c:String(x.c || ''), v:String(x.v || '') }; }) })) }; };
 const nLie = l => { l = l || {}; return { table:String(l.table || ''), cle:String(l.cle || ''), cle2:String(l.cle2 || ''), dateCol:String(l.dateCol || ''), mode:['toutes', 'courante', 'precedente', 'fixe'].includes(l.mode) ? l.mode : 'toutes', annee:Math.max(0, Math.min(2200, +l.annee || 0)),
   cols:(l.cols || []).map(x => ({ c:String((x && x.c) || ''), nom:String((x && x.nom) || '') })), triCol:String(l.triCol || ''), triDir:l.triDir === 'asc' ? 'asc' : 'desc', max:Math.max(0, Math.min(200, +l.max || 0)), afficherVide:l.afficherVide !== false, taille:Math.max(0, Math.min(30, +l.taille || 0)), tailleTh:Math.max(0, Math.min(30, +l.tailleTh || 0)), larg:(l.larg === 'ligne' || l.larg === 'contenu') ? 'ligne' : 'auto', gs:l.gs === true, videTxt:String(l.videTxt || ''), grp:String(l.grp || ''), grpDir:l.grpDir === 'asc' ? 'asc' : 'desc', grpHide:l.grpHide !== false, sousOuvert:['premiere', 'toutes', 'aucune'].includes(l.sousOuvert) ? l.sousOuvert : 'premiere' }; };
@@ -400,7 +400,7 @@ const nMsg = m => { m = m || {}; const d = x => /^\d{4}-\d{2}-\d{2}$/.test(x || 
 const nRech = r => { r = r || {}; return { info:String(r.info || ''), nom:r.nom !== false, mode:r.mode === 'choix' ? 'choix' : 'toutes', cols:(r.cols || []).map(x => ({ c:String((x && x.c) || ''), nom:String((x && x.nom) || '') })) }; };
 const nSt = x => { x = x || {}; return { coul:hex(x.coul), fond:hex(x.fond), taille:Math.max(0, Math.min(40, +x.taille || 0)), gras:!!x.gras, ital:!!x.ital }; };
 const ICO_DEF = { iti:'🧭', prog:'📊' };
-const nFiltre = f => { f = f || {}; return { menu:f.menu === true, tous:f.tous !== false, tousTxt:String(f.tousTxt || ''), bouton:f.bouton === true, aide:String(f.aide || ''), hors:f.hors === true, o:f.o === true, fond:hex(f.fond), coul:hex(f.coul), gras:!!f.gras, ital:f.ital === true, c:String(f.c || ''), nom:String(f.nom || ''), type:['multi', 'unique', 'oui', 'curseur'].includes(f.type) ? f.type : 'multi', oui:String(f.oui || 'Oui'), non:String(f.non || 'Non') }; };
+const nFiltre = f => { f = f || {}; return { menu:f.menu === true, bt:f.bt !== false, tous:f.tous !== false, tousTxt:String(f.tousTxt || ''), bouton:f.bouton === true, aide:String(f.aide || ''), hors:f.hors === true, o:f.o === true, fond:hex(f.fond), coul:hex(f.coul), gras:!!f.gras, ital:f.ital === true, c:String(f.c || ''), nom:String(f.nom || ''), type:['multi', 'unique', 'oui', 'curseur'].includes(f.type) ? f.type : 'multi', oui:String(f.oui || 'Oui'), non:String(f.non || 'Non') }; };
 const nCond = c => ({ c:String((c && c.c) || ''), op:(c && c.op) || '=', v:String((c && c.v) ?? ''), on:!!(c && c.on) });
 const nInd = i => {
   i = i || {};
@@ -577,7 +577,7 @@ haut.onAdd = () => {
   d.innerHTML = `<div id="reserve" hidden><div id="commune-zone"></div><div id="b-q" class="b-q"><input type="search" id="q" placeholder="Rechercher un nom…" aria-label="Rechercher un point"><select id="q-champ" aria-label="Rechercher dans" style="display:none"></select><div id="q-sug" class="sug" role="listbox" style="display:none"></div></div><div id="filtres"></div><div class="count" id="count"></div>
     <div id="b-liste"><button class="link" id="liste-btn" type="button" aria-expanded="false">Afficher la liste des points</button><div id="liste" style="display:none"></div></div>
     <div id="suivi"></div><button class="link" id="prog-btn" type="button">📊 Voir la progression</button><button class="link" id="iti-btn" type="button">🧭 Préparer un itinéraire</button>
-    <div class="legend" id="legende"></div><div id="b-version"><small class="ver"></small></div></div><div id="cfg-secours" class="panel"></div>`;
+    <div class="legend" id="legende"></div></div><div id="cfg-secours" class="panel"></div>`;
   L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
   d.querySelector('#q').addEventListener('input', e => { recherche = sansAccent(e.target.value.trim()); sugIdx = -1; appliquerFiltres(); majSug(); });
   d.querySelector('#q').addEventListener('keydown', e => {
@@ -691,7 +691,7 @@ function appliquerStyles() {   // couleur, fond (en pastille), taille, gras, ita
   el.textContent = Object.entries(STYLES_TXT).map(([k, [, sel]]) => {
     const x = cfg.styles[k], d = [];
     if (x.coul) d.push(`color:${x.coul}`);
-    if (x.fond) { d.push(`background:${x.fond}`, 'padding:2px 8px', 'border-radius:4px'); if (['count', 'version'].includes(k)) d.push('width:fit-content'); }
+    if (x.fond) { d.push(`background:${x.fond}`, 'padding:2px 8px', 'border-radius:4px'); if (k === 'count') d.push('width:fit-content'); }
     if (x.taille) d.push(`font-size:${x.taille}px`); if (x.gras) d.push('font-weight:700'); if (x.ital) d.push('font-style:italic');
     return d.length ? `${sel} { ${d.map(v => v + ' !important').join('; ')} }` : '';
   }).join('\n');
@@ -764,10 +764,10 @@ function dessinerEncarts() {   // range les éléments dans leurs encarts (recon
 }
 function appliquerAffichage() {   // éléments affichés ou masqués, selon la configuration
   const A = k => opt('aff_' + k, true) !== false, show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
-  const ids = { commune:'commune-zone', q:'b-q', filtres:'filtres', count:'count', version:'b-version', liste:'b-liste', iti:'iti-btn', prog:'prog-btn', legende:'legende' };
+  const ids = { commune:'commune-zone', q:'b-q', filtres:'filtres', count:'count', liste:'b-liste', iti:'iti-btn', prog:'prog-btn', legende:'legende' };
   const qq = document.getElementById('q'); if (qq) qq.placeholder = opt('lib_q', LIB.q[1]);
   const ib = document.getElementById('iti-btn'); if (ib) ib.textContent = avecIco('iti', opt('lib_iti', LIB.iti[1]));
-  appliquerStyles(); appliquerAides(); planifierMessages(); majRechChamp(); { const vv = document.querySelector('#b-version .ver'); if (vv) vv.textContent = (optBrut('lib_version', 'version') ? optBrut('lib_version', 'version') + ' ' : '') + VERSION; } dessinerEncarts(); show('commune-ctl', A('commune')); { const dispo = { liste:!barreOn('liste'), suivi:cfg.prog.inds.some(x => !warnInd(x)), prog:!barreOn('prog') && cfg.prog.inds.length > 0, iti:!barreOn('iti') }; Object.keys(dispo).forEach(k => show(ELEM_ID[k], dispo[k])); } { const pb = document.getElementById('prog-btn'); if (pb) pb.textContent = avecIco('prog', opt('lib_prog', LIB.prog[1])); } placerCommune(); { const ci = document.getElementById('commune'); if (ci) ci.placeholder = opt('lib_commune', 'Aller à une commune…'); } dessinerBarre();
+  appliquerStyles(); appliquerAides(); planifierMessages(); majRechChamp(); dessinerEncarts(); show('commune-ctl', A('commune')); { const dispo = { liste:!barreOn('liste'), suivi:cfg.prog.inds.some(x => !warnInd(x)), prog:!barreOn('prog') && cfg.prog.inds.length > 0, iti:!barreOn('iti') }; Object.keys(dispo).forEach(k => show(ELEM_ID[k], dispo[k])); } { const pb = document.getElementById('prog-btn'); if (pb) pb.textContent = avecIco('prog', opt('lib_prog', LIB.prog[1])); } placerCommune(); { const ci = document.getElementById('commune'); if (ci) ci.placeholder = opt('lib_commune', 'Aller à une commune…'); } dessinerBarre();
   encartsVus.forEach(({ sec, ks }) => { sec.style.display = ks.some(k => { const e = document.getElementById(ELEM_ID[k]); return e && e.style.display !== 'none' && (k !== 'commune' || e.children.length); }) ? '' : 'none'; });   // un encart sans rien à montrer disparaît
   const racine = document.documentElement;
   if (racine && racine.style) { [['--larg-popup', 'larg_popup', 300], ['--haut-popup', 'haut_popup', 260], ['--larg-fiche', 'larg_fiche', 400], ['--fs-legende', 'taille_legende', 13], ['--larg-pop-leg', 'larg_pop_leg', 260], ['--haut-pop-leg', 'haut_pop_leg', 360]].forEach(([v, o, d]) => racine.style.setProperty(v, (+opt(o, d) || d) + 'px')); racine.style.setProperty('--larg-noms', (+opt('larg_noms', 38) || 38) + '%'); racine.style.setProperty('--liste-max', +opt('liste_max', 0) > 0 ? (+opt('liste_max', 0) + 'px') : '45vh'); racine.style.setProperty('--larg-gauche', (+opt('largeur_gauche', 240) || 240) + 'px'); racine.style.setProperty('--police', POLICES[opt('police', 'Système (par défaut)')] || POLICES['Système (par défaut)']); racine.style.setProperty('--fs-popup', (+opt('taille_popup', 13) || 13) + 'px'); racine.style.setProperty('--fs-fiche', (+opt('taille_fiche', 14) || 14) + 'px'); } show('liste-btn', !barreOn('liste'));
@@ -796,7 +796,7 @@ function filtreHtml(f) {
   const vals = [...new Set([...marqueurs.values()].map(x => x._cifi.fv[c]))].filter(v => v !== undefined).sort((a, b) => String(a).localeCompare(String(b), 'fr')).slice(0, 1000);
   if (f.type === 'unique') return `<label class="flt"${fs(f)}>${esc(nom)}<select data-c="${esc(c)}" data-t="unique">${f.tous !== false ? `<option value="">${esc(f.tousTxt || 'Tous')}</option>` : ''}${vals.map(v => `<option${sl.has(v) ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label>`;
   const ouv = etatFiltres.has(c) ? etatFiltres.get(c) : opt('filtres_sous_ouvert', false) === true;
-  return `<details class="flt-d${f.menu ? ' menu' : ''}" data-c="${esc(c)}"${ouv ? ' open' : ''}><summary${fs(f)}>${esc(titreMulti(f, [...sl]))}</summary><div class="liste">${f.menu ? '<input type="search" class="flt-rech" placeholder="Rechercher…" aria-label="Rechercher dans la liste"><button type="button" class="flt-eff" data-c="' + esc(c) + '" data-tout="1">Tout sélectionner</button> <button type="button" class="flt-eff" data-c="' + esc(c) + '">Tout effacer</button>' : ''}${vals.map(v => `<label><input type="checkbox" data-c="${esc(c)}" value="${esc(v)}"${sl.has(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('')}</div></details>`;
+  return `<details class="flt-d${f.menu ? ' menu' : ''}" data-c="${esc(c)}"${ouv ? ' open' : ''}><summary${fs(f)}>${esc(titreMulti(f, [...sl]))}</summary><div class="liste">${f.menu ? '<input type="search" class="flt-rech" placeholder="Rechercher…" aria-label="Rechercher dans la liste">' + (f.bt ? '<button type="button" class="flt-eff" data-c="' + esc(c) + '" data-tout="1">Tous</button><button type="button" class="flt-eff" data-c="' + esc(c) + '">Aucun</button>' : '') : ''}${vals.map(v => `<label><input type="checkbox" data-c="${esc(c)}" value="${esc(v)}"${sl.has(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('')}</div></details>`;
 }
 function filtresParDefaut() {   // sans « Tous », la première valeur d'une liste est sélectionnée
   filtresDefs.forEach(f => { if (f.type === 'unique' && f.tous === false) { const v = valsDe(f.c); if (v.length && !(filtreSel[f.c] && filtreSel[f.c].length)) filtreSel[f.c] = [v[0]]; } });
@@ -1492,8 +1492,8 @@ const fonteDe = (g, i) => g ? (i ? 'gi' : 'g') : (i ? 'i' : 'n');
 const selFonte = (attrs, g, i) => selectHtml(`${attrs} aria-label="Style de texte"`, FONTES, fonteDe(g, i));
 const GEAR = '<span class="gear" aria-hidden="true">⚙</span>';
 function blocElt(k) {   // réglages d’un élément : texte, icône, aide au survol, styles
-  const AIDE_K = ['q', 'filtres', 'liste', 'iti', 'prog', 'legende'], ICO_K = ['filtres', 'liste', 'iti', 'prog', 'legende'], BLANC_OK = ['filtres_titre', 'lib_version'],
-    HINTS = { count:'Texte affiché · variables : {n} visibles, {total} au total, {s} pluriel', commune:'Texte de la barre de recherche de commune', filtres:'Titre (laissez vide pour n’afficher que l’icône)', version:'Texte avant le numéro (facultatif)' };
+  const AIDE_K = ['q', 'filtres', 'liste', 'iti', 'prog', 'legende'], ICO_K = ['filtres', 'liste', 'iti', 'prog', 'legende'], BLANC_OK = ['filtres_titre'],
+    HINTS = { count:'Texte affiché · variables : {n} visibles, {total} au total, {s} pluriel', commune:'Texte de la barre de recherche de commune', filtres:'Titre (laissez vide pour n’afficher que l’icône)' };
     const L_ = LIB[k];
     const corps = (L_ ? `<div class="rg-l2"><input type="text" data-o="${L_[0]}" value="${esc(BLANC_OK.includes(L_[0]) ? optBrut(L_[0], L_[1]) : opt(L_[0], L_[1]))}" placeholder="${esc(HINTS[k] || 'Texte affiché')}" style="flex:1;min-width:150px" aria-label="Texte : ${esc(ELTS_GAUCHE[k])}">${k === 'liste' ? `<input type="text" data-o="lib_liste2" value="${esc(opt('lib_liste2', 'Masquer la liste des points'))}" placeholder="Texte quand la liste est ouverte" style="flex:1;min-width:150px" aria-label="Texte quand la liste est ouverte">` : ''}</div>` : '')
       + (ICO_K.includes(k) ? `<div class="rg-l2"><input type="text" data-o="ico_${k}" value="${esc(opt('ico_' + k, ICO_DEF[k] || ''))}" placeholder="Icône (emoji ou symbole)" style="max-width:170px" aria-label="Icône">${k === 'liste' ? `<input type="text" data-o="ico_liste2" value="${esc(opt('ico_liste2', ''))}" placeholder="Icône quand la liste est ouverte" style="max-width:210px" aria-label="Icône liste ouverte">` : ''}</div>` : '')
@@ -1614,7 +1614,7 @@ function blocFiltres() {
       <div class="rg-l2"><select ${A} data-f="type" aria-label="Type de filtre"><option value="multi"${f.type === 'multi' ? ' selected' : ''}>Choix multiples (cases à cocher)</option><option value="unique"${f.type === 'unique' ? ' selected' : ''}>Choix unique (liste déroulante)</option><option value="oui"${f.type === 'oui' ? ' selected' : ''}>Oui / non : case « seulement les oui »</option><option value="curseur"${f.type === 'curseur' ? ' selected' : ''}>Oui / non : curseur Tous · Oui · Non</option></select>
       ${f.type === 'oui' || f.type === 'curseur' ? `<label>Valeur « oui » <input type="text" ${A} data-f="oui" value="${esc(f.oui)}" style="max-width:110px"></label>` : ''}${f.type === 'curseur' ? `<label>Valeur « non » <input type="text" ${A} data-f="non" value="${esc(f.non)}" style="max-width:110px"></label>` : ''}</div>
       ${f.type === 'oui' ? `<div class="rg-l2"><label>Apparence <select ${A} data-f="bouton"><option value=""${f.bouton ? '' : ' selected'}>Case à cocher</option><option value="1"${f.bouton ? ' selected' : ''}>Bouton cliquable</option></select></label></div>` : ''}
-      ${f.type === 'multi' ? `<div class="rg-l2"><label><input type="checkbox" ${A} data-f="menu"${f.menu ? ' checked' : ''}> Afficher en liste déroulante</label></div>` : ''}
+      ${f.type === 'multi' ? `<div class="rg-l2"><label><input type="checkbox" ${A} data-f="menu"${f.menu ? ' checked' : ''}> Afficher en liste déroulante</label><label><input type="checkbox" ${A} data-f="bt"${f.bt ? ' checked' : ''}> Afficher les boutons Tous / Aucun</label></div>` : ''}
       ${f.type === 'unique' ? `<div class="rg-l2"><label><input type="checkbox" ${A} data-f="tous"${f.tous ? ' checked' : ''}> Proposer une entrée « Tous »</label>${f.tous ? `<input type="text" ${A} data-f="tousTxt" value="${esc(f.tousTxt)}" placeholder="Tous" style="max-width:120px" aria-label="Texte de l’entrée Tous">` : '<span class="vide" style="font-size:12px">La première valeur est alors sélectionnée.</span>'}</div>` : ''}
       <div class="rg-l2"><input type="text" ${A} data-f="aide" value="${esc(f.aide)}" placeholder="Aide au survol (facultatif)" aria-label="Aide au survol"></div>
       <div class="rg-l2"><label><input type="checkbox" ${A} data-f="hors"${f.hors ? ' checked' : ''}> Toujours visible (reste affiché quand « Filtres » est plié)</label></div>
@@ -1718,7 +1718,7 @@ function contenuOnglet() {
     ${optStyleGrist()}
     <label>Police d’écriture ${sl('police', Object.keys(POLICES))}</label>
     <p class="vide" style="font-size:12px;margin:0">Police utilisée pour tous les textes du widget.</p></section>
-    ${sectionElt('count', 'Nombre de points affichés')}${sectionElt('version', 'Numéro de version')}
+    ${sectionElt('count', 'Nombre de points affichés')}
     ${blocSauvegarde()}`;
 }
 const AIDES_ONGLET = {
@@ -1738,7 +1738,7 @@ const cleLib = ks => ks.map(k => (LIB[k] || [])[0]).filter(Boolean);   // régla
 const CLES_ONGLET = { points:['taille', 'regroupement', 'distance_m', ...cleLib(['liste']), 'lib_liste2', 'ico_liste', 'ico_liste2', 'aide_liste', 'ouv_liste'], popup:['larg_popup', 'haut_popup', 'larg_noms', 'pn_taille', 'pn_fonte', 'pn_coul_on', 'pn_coul', 'pv_taille', 'pv_fonte', 'pv_coul_on', 'pv_coul'],
   fiche:['larg_fiche', 'taille_fiche', 'larg_noms', 'ouverture'], filtres:['pos_commune', 'commune_filtre', 'commune_contour', 'liste_max', 'sug_on', 'sug_max', 'sug_min', ...cleLib(['q', 'filtres', 'commune']), 'ico_filtres', 'aide_q', 'aide_filtres'],
   legende:['taille_legende', 'larg_pop_leg', 'haut_pop_leg', ...cleLib(['legende']), 'ico_legende', 'aide_legende', 'ouv_legende'], iti:['iti_url', 'iti_resource', 'iti_titre', 'iti_avert', 'iti_avert_pied', ...cleLib(['iti']), 'ico_iti', 'aide_iti'],
-  prog:[...cleLib(['prog']), 'ico_prog', 'aide_prog', 'prog_titre'], general:[...cleLib(['count', 'version']), 'police', 'style_grist', 'aide_on', 'aide_delai', 'aide_taille', 'aide_fond', 'aide_coul'] };
+  prog:[...cleLib(['prog']), 'ico_prog', 'aide_prog', 'prog_titre'], general:[...cleLib(['count']), 'police', 'style_grist', 'aide_on', 'aide_delai', 'aide_taille', 'aide_fond', 'aide_coul'] };
 function dessiner() {
   const y = (modal.querySelector('.rg-corps') || {}).scrollTop || 0, av = avertOnglet();
   modal.innerHTML = `<div class="rg-onglet-reduit"><button type="button" data-a="reduire" aria-label="Rouvrir la configuration">⚙ Réglages ▸</button></div><div class="rg-boite" role="dialog" aria-label="Configurer le widget"><div class="rg-tete"><h2>Configurer le widget <small class="rg-ver">version ${VERSION}</small></h2><span id="rg-etat" class="rg-etat">${esc(etatSauv)}</span>${btn('reduire', '', '◂ Réduire', 'Réduire le volet pour voir toute la carte')}${btn('fermer', '', 'Fermer')}</div>
