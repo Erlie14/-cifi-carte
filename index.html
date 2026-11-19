@@ -199,6 +199,7 @@
   .zp-cg { top:10px; left:10px; } .zp-cd { top:10px; right:56px; align-items:flex-end; }
   body.cfg-large .zp-hd, body.cfg-large .zp-cd { right:calc(var(--larg-cfg) + 56px); } body.cfg-large .zp-bd { right:calc(var(--larg-cfg) + 10px); }
   .zone-enc > .encart.enc-bouton { position:relative; width:auto; padding:0; }
+  .zone-enc .enc-t { background:none; border:0; box-shadow:none; }
   .enc-bouton > .enc-t { margin:0; width:auto; padding:7px 12px; cursor:pointer; white-space:nowrap; }
   .enc-p { box-sizing:border-box; padding:10px; overflow:auto; max-width:100%; pointer-events:auto; }
   .enc-p.ouv-bas { display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:5; max-width:calc(100vw - 20px); max-height:70vh; border:1px solid var(--line); box-shadow:0 4px 14px #0003; }
@@ -206,7 +207,7 @@
   .enc-p.ouv-droite, .enc-p.ouv-gauche { display:none; position:absolute; top:0; bottom:0; box-shadow:0 0 18px #0003; } .enc-p.ouv-droite { right:0; } .enc-p.ouv-gauche { left:0; }
   .enc-p.ouvert { display:block; } .enc-ph { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-weight:700; } .enc-x { border:0; background:none; font-size:16px; cursor:pointer; }
   .enc-p #liste-btn { display:none; } .enc-p #liste { display:block !important; }
-  .zp-vd, .zp-vg { display:block; top:0; bottom:0; max-width:100%; max-height:none; z-index:1090; } .zp-vd { right:0; } .zp-vg { left:0; } body.cfg-large .zp-vd { right:var(--larg-cfg); }
+  .zp-vd, .zp-vg { display:block; top:0; bottom:0; left:0; right:0; max-width:none; max-height:none; z-index:1090; } body.cfg-large .zp-vd { right:var(--larg-cfg); }   /* zones aussi larges que l'écran : sinon la largeur en % du panneau serait nulle */
   .enc-c.h { flex-flow:row wrap; align-items:flex-start; gap:6px 12px; } .enc-c.h > #b-q { width:200px; } .enc-c.h #filtres { display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px 10px; } .enc-c.h #filtres details.flt-d.menu { min-width:170px; }
   #cfg-secours { pointer-events:auto; } #cfg-secours:empty { display:none; }
   .enc-c { display:flex; flex-direction:column; } .enc-c > * { flex:none; } .enc-c > button.link, .enc-c #b-liste > button.link { align-self:flex-start; margin-top:0; }
@@ -289,7 +290,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '95';
+const VERSION = '96';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
