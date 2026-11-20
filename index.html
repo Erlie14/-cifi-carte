@@ -195,6 +195,7 @@
   body, .leaflet-container, .leaflet-popup-content-wrapper, .leaflet-tooltip, button, input, select { font-family:var(--police, Marianne, Arial, sans-serif); }
   .fiche .sous, .fp-tete .sous { font-size:12px; opacity:.85; margin:-2px 0 6px; }
   .dans-panneau { box-shadow:none !important; border:0 !important; padding:0 !important; margin-bottom:8px; background:none !important; } .dans-panneau input { width:100%; }
+  #liste .liste-tri { position:sticky; top:0; z-index:1; display:flex; align-items:center; gap:8px; padding:5px 8px; background:#fff; border-bottom:1px solid var(--line); font-size:12px; } #liste .liste-tri label { display:flex; align-items:center; gap:6px; margin:0; } #liste .liste-tri select { max-width:180px; font-size:12px; } #liste .liste-tri button { width:auto; padding:2px 9px; border:1px solid var(--line); border-radius:4px; background:#fff; font-size:14px; }
   #liste .sw { display:flex; justify-content:center; flex:none; width:26px; } #liste .pin { border-width:2px; }
   /* encarts en haut de la carte : blocs indépendants rangés côte à côte (ordre, cadre et contenu viennent de la configuration) */
   .zone-enc { position:absolute; z-index:950; display:flex; gap:8px; pointer-events:none; max-width:calc(100% - 20px); max-height:calc(100% - 40px); }   /* une zone par emplacement ; les encarts s'y rangent dans l'ordre de la configuration */
@@ -305,7 +306,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '122';
+const VERSION = '124';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -415,7 +416,7 @@ const nInd = i => {
     : [{ de:0, couleur:'#e1000f' }, { de:Math.max(0, Math.min(200, +i.orange || 50)), couleur:'#f4821f' }, { de:Math.max(0, Math.min(200, +i.vert || 80)), couleur:'#2a9d8f' }];   // anciens réglages : seuils orange et vert
   pal.sort((a, b) => a.de - b.de); pal[0].de = 0;
   return { o:i.o === true, nom:String(i.nom || ''), grp:String(i.grp || ''), mode:['ratio', 'part', 'compte', 'somme', 'moyenne'].includes(i.mode) ? i.mode : 'ratio', num:String(i.num || i.fait || ''), den:String(i.den || i.att || ''), col:String(i.col || ''),
-    masq:i.masq !== false, masqVide:i.masqVide !== false, masqZero:i.masqZero === true, total:i.total !== false, texte:String(i.texte || ''), forme:i.forme === 'carres' ? 'carres' : 'barre', nb:Math.max(2, Math.min(20, Math.round(+i.nb) || 10)), reste:i.reste === true, couleurReste:hex(i.couleurReste) || '#e1000f', libOk:String(i.libOk || ''), libReste:String(i.libReste || ''), cond:nCond(i.cond), base:nCond(i.base), libNum:String(i.libNum || ''), libDen:String(i.libDen || ''), unite:String(i.unite || ''), couleur:hex(i.couleur) || '#000091', paliers:pal };
+    masq:i.masq !== false, masqVide:i.masqVide !== false, masqZero:i.masqZero === true, total:i.total !== false, legPal:i.legPal !== false, texte:String(i.texte || ''), forme:i.forme === 'carres' ? 'carres' : 'barre', nb:Math.max(2, Math.min(20, Math.round(+i.nb) || 10)), reste:i.reste === true, couleurReste:hex(i.couleurReste) || '#e1000f', libOk:String(i.libOk || ''), libReste:String(i.libReste || ''), cond:nCond(i.cond), base:nCond(i.base), libNum:String(i.libNum || ''), libDen:String(i.libDen || ''), unite:String(i.unite || ''), couleur:hex(i.couleur) || '#000091', paliers:pal };
 };
 const nProg = p => { p = p || {}; return { inds:(p.inds || []).map(nInd), tri:['nom', 'asc', 'desc'].includes(p.tri) ? p.tri : 'nom', suivre:p.suivre !== false, clic:p.clic !== false }; };
 const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(nSec), regles:(c.regles || []).map(nRegle), defaut:nDef(c.defaut), entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, encarts:normEncarts(c.encarts), disposition:nDisp(c.disposition), barre:nBarre(c.barre), messages:(c.messages || []).map(nMsg), recherche:nRech(c.recherche), styles:Object.fromEntries(Object.keys(STYLES_TXT).map(k => [k, nSt((c.styles || {})[k] || (k.startsWith('bt_') ? (c.styles || {}).boutons : null))])), filtres:(c.filtres || []).map(nFiltre), prog:nProg(c.prog), etiquettes:{ liste:nEtq((c.etiquettes || {}).liste), legende:nEtq((c.etiquettes || {}).legende) } }; };
@@ -631,7 +632,8 @@ haut.onAdd = () => {
     if (e.target.classList.contains('flt-rech')) { const q = sansAccent(e.target.value.trim()); e.target.parentNode.querySelectorAll('label').forEach(l => { l.hidden = !sansAccent(l.textContent).includes(q); }); return; }
     if (e.target.dataset.t === 'curseur') e.target.dispatchEvent(new Event('change', { bubbles:true })); });
   d.querySelector('#liste-btn').addEventListener('click', () => { listeOuverte = !listeOuverte; setListe(listeOuverte); });
-  d.querySelector('#liste').addEventListener('click', e => { const b = e.target.closest('button[data-id]'); if (b) allerA(Number(b.dataset.id)); });
+  d.querySelector('#liste').addEventListener('click', e => { const f = e.target.closest('[data-tri="d"]'); if (f) { const t = triEnCours(); triU = { c:t.c, d:t.d === 'desc' ? 'asc' : 'desc' }; majListe(); return; } const b = e.target.closest('button[data-id]'); if (b) allerA(Number(b.dataset.id)); });
+  d.querySelector('#liste').addEventListener('change', e => { if (e.target.dataset && e.target.dataset.tri === 'c') { triU = { c:e.target.value, d:triEnCours().d }; majListe(); } });
   d.querySelector('#legende').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.id === 'leg-toggle') { legOuverte = !legOuverte; majLegende(); return; }
@@ -789,19 +791,29 @@ function appliquerAffichage() {   // éléments affichés ou masqués, selon la 
   setListe(listeOuverte && A('liste')); majLegende();
 }
 function devant(d) { return etiquetteHtml(d.style, cfg.etiquettes.liste, d.vals); }
-function comparerListe(a, b) {   // tri de la liste des points : nom, ou colonne choisie (avec, au besoin, un ordre de valeurs)
-  const c = opt('tri_col', ''), sg = opt('tri_dir', 'asc') === 'desc' ? -1 : 1, nom = String(a.nom).localeCompare(String(b.nom), 'fr');
+let triU = null;   // tri choisi par la personne dans la liste : { c, d } (sinon tri de départ du configurateur)
+const colsTri = () => String(opt('tri_cols', '')).split(',').filter(c => c && allCols.includes(c));
+const triEnCours = () => triU || { c:opt('tri_col', ''), d:opt('tri_dir', 'asc') };
+function comparerListe(a, b) {   // tri de la liste des points : nom, ou colonne choisie (ordre des choix de Grist, ou ordre saisi)
+  const { c, d } = triEnCours(), sg = d === 'desc' ? -1 : 1, nom = String(a.nom).localeCompare(String(b.nom), 'fr');
   if (!c) return sg * nom;
-  const vide = v => v === '' || v === null || v === undefined, x = a.tri, y = b.tri;
+  const val = m => c === opt('tri_col', '') ? m.tri : (typeof m.vals[c] === 'number' ? m.vals[c] : (fmt(c, m.vals[c]) ?? ''));
+  const vide = v => v === '' || v === null || v === undefined, x = val(a), y = val(b);
   if (vide(x) || vide(y)) return vide(x) && vide(y) ? nom : vide(x) ? 1 : -1;   // valeurs vides toujours à la fin
-  const ordre = String(opt('tri_ordre', '')).split(';').map(v => v.trim().toLowerCase()).filter(Boolean), rang = v => { const i = ordre.indexOf(String(v).trim().toLowerCase()); return i < 0 ? ordre.length : i; };
+  const ch = ((stylesT[tid] || {})[c] || {}).wo, choix = ch && Array.isArray(ch.choices) ? ch.choices : null;
+  const ordre = (choix && choix.length ? choix.map(String) : (c === opt('tri_col', '') ? String(opt('tri_ordre', '')).split(';') : [])).map(v => v.trim().toLowerCase()).filter(Boolean), rang = v => { const k = ordre.indexOf(String(v).trim().toLowerCase()); return k < 0 ? ordre.length : k; };
   const r = ordre.length ? rang(x) - rang(y) : (typeof x === 'number' && typeof y === 'number') ? x - y : String(x).localeCompare(String(y), 'fr', { numeric:true });
   return sg * r || nom;
+}
+function barreTri() {   // « Trier par » + flèche, en haut de la liste (colonnes proposées par le configurateur)
+  const cols = colsTri(); if (!cols.length) return '';
+  const { c, d } = triEnCours(), liste = [...new Set(cols.concat(c ? [c] : []))];
+  return `<div class="liste-tri"><label>Trier par <select data-tri="c" aria-label="Trier par"><option value=""${c ? '' : ' selected'}>Nom</option>${liste.map(k => `<option value="${esc(k)}"${k === c ? ' selected' : ''}>${esc(libel(k))}</option>`).join('')}</select></label><button type="button" data-tri="d" title="Inverser l’ordre" aria-label="Inverser l’ordre (actuellement ${d === 'desc' ? 'décroissant' : 'croissant'})">${d === 'desc' ? '↓' : '↑'}</button></div>`;
 }
 function majListe() {
   if (!listeOuverte) return;
   const l = [...marqueurs.values()].filter(m => cluster.hasLayer(m)).sort((a, b) => comparerListe(a._cifi, b._cifi)).slice(0, 5000);
-  document.getElementById('liste').innerHTML = l.length ? l.map(m => `<button type="button" data-id="${Number(m._cifi.id)}">${devant(m._cifi)}${esc(m._cifi.nom || 'Sans nom')}</button>`).join('') : '<p class="vide" style="margin:8px">Aucun point.</p>';
+  document.getElementById('liste').innerHTML = barreTri() + (l.length ? l.map(m => `<button type="button" data-id="${Number(m._cifi.id)}">${devant(m._cifi)}${esc(m._cifi.nom || 'Sans nom')}</button>`).join('') : '<p class="vide" style="margin:8px">Aucun point.</p>');
 }
 const fs = f => { const a = (coul(f.coul) ? `color:${coul(f.coul)};` : '') + (coul(f.fond) ? `background:${coul(f.fond)};padding:2px 8px;border-radius:4px;width:fit-content;` : '') + (f.gras ? 'font-weight:700;' : '') + (f.ital ? 'font-style:italic;' : ''); return (a ? ` style="${a}"` : '') + (f.aide ? ` data-aide="${esc(f.aide)}"` : ''); };
 // Titre d'un filtre à choix multiples : « Nom (2) », ou « Nom : valeur » / « Nom : 2 sélectionnés » en liste déroulante.
@@ -1254,7 +1266,7 @@ function progDessiner() {
     return `<div class="prog-l${cls || ''}${!cls && P.clic && I.grp ? ' cl' : ''}" data-g="${esc(o.nom)}"><div class="prog-t"><span>${esc(o.nom)}</span><span>${t}</span></div>${barre}</div>`; };
   if (sv) sv.innerHTML = ligne(tot);   // encart « Suivi » : le total de l'indicateur, en une barre
   const rows = [...g.values()].filter(o => !(pctMode && I.masq && !(o.b > 0)) && !(I.masqVide && o.vide) && !(I.masqZero && o.a === 0)).sort((x, y) => P.tri === 'nom' ? String(x.nom).localeCompare(String(y.nom), 'fr') : ((val(x) ?? -1) - (val(y) ?? -1)) * (P.tri === 'asc' ? 1 : -1));
-  const leg = pctMode ? `<div class="prog-leg">${I.paliers.map((p, j) => `<span><i style="background:${p.couleur}"></i>${j === 0 ? (I.paliers[1] ? 'moins de ' + I.paliers[1].de + ' %' : 'toutes valeurs') : 'dès ' + p.de + ' %'}</span>`).join('')}</div>` : '';
+  const leg = pctMode && I.legPal ? `<div class="prog-leg">${I.paliers.map((p, j) => `<span><i style="background:${p.couleur}"></i>${j === 0 ? (I.paliers[1] ? 'moins de ' + I.paliers[1].de + ' %' : 'toutes valeurs') : 'dès ' + p.de + ' %'}</span>`).join('')}</div>` : '';
   progPanel.innerHTML = tete + `<div class="fp-corps">${P.inds.length > 1 ? `<label style="font-size:13px">Indicateur <select id="prog-ind">${P.inds.map((x, i) => `<option value="${i}"${x === I ? ' selected' : ''}>${esc(x.nom || 'Indicateur ' + (i + 1))}</option>`).join('')}</select></label>` : ''}
     ${I.texte ? `<p class="vide" style="font-size:12px;margin:6px 0 0">${esc(I.texte)}</p>` : ''}${leg}
     ${progFocus ? `<div class="prog-focus">Carte limitée à « ${esc(progFocus.v)} » <button type="button" data-p="tous">Tout afficher</button></div>` : ''}
@@ -1716,7 +1728,8 @@ function blocProg() {
       ${x.mode === 'part' ? cond(i, 'cond', x.cond, 'Part des points où…') + `<label><input type="checkbox" ${A} data-f="baseon"${x.base.on ? ' checked' : ''}> Seulement parmi une partie des points</label>${x.base.on ? cond(i, 'base', x.base, 'Parmi ceux où…') : ''}` : ''}
       ${x.mode === 'compte' ? cond(i, 'cond', x.cond, 'Compter seulement ceux où… (facultatif)') : ''}
       ${x.mode === 'somme' || x.mode === 'moyenne' ? `<label>Colonne ${selCol(`${A} data-f="col"`, x.col)}</label>` : ''}
-      <label>Texte d’introduction (facultatif) <input type="text" ${A} data-f="texte" value="${esc(x.texte)}" placeholder="Texte affiché sous le titre" style="max-width:260px"></label>
+      <label>Description (facultatif) <input type="text" ${A} data-f="texte" value="${esc(x.texte)}" placeholder="Texte affiché sous le titre" style="max-width:260px"></label>
+      ${pct ? `<label><input type="checkbox" ${A} data-f="legPal"${x.legPal ? ' checked' : ''}> Afficher la légende des couleurs</label>` : ''}
       <label><input type="checkbox" ${A} data-f="total"${x.total ? ' checked' : ''}> Afficher la barre du total</label>
       ${x.grp ? `<div class="rg-sous">Lignes à masquer</div><label><input type="checkbox" ${A} data-f="masqVide"${x.masqVide ? ' checked' : ''}> Groupe « (vide) » (points sans valeur)</label>${pct ? `<label><input type="checkbox" ${A} data-f="masq"${x.masq ? ' checked' : ''}> Dénominateur égal à 0</label>` : ''}<label><input type="checkbox" ${A} data-f="masqZero"${x.masqZero ? ' checked' : ''}> ${x.mode === 'ratio' || x.mode === 'part' ? 'Numérateur égal à 0' : 'Résultat égal à 0'}</label>` : ''}
       <label>Forme de la barre <select ${A} data-f="forme">${[['barre', 'Barre continue'], ['carres', 'Carrés']].map(([v, t]) => `<option value="${v}"${x.forme === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
@@ -1811,7 +1824,10 @@ function contenuOnglet() {
     <label>Trier par ${selectHtml('data-o="tri_col"', allCols.map(c => [esc(c), esc(libel(c))]), opt('tri_col', ''), 'Nom du point')}</label>
     <label>Sens ${selectHtml('data-o="tri_dir"', [['asc', 'Croissant (A → Z, 0 → 9)'], ['desc', 'Décroissant (Z → A, 9 → 0)']], opt('tri_dir', 'asc'))}</label>
     <label>Ordre des valeurs (facultatif) <input type="text" data-o="tri_ordre" value="${esc(opt('tri_ordre', ''))}" placeholder="ex. Élevé ; Moyen ; Faible"></label>
-    <p class="vide" style="font-size:12px;margin:0">Valeurs dans l’ordre voulu, séparées par « ; ». Sans ordre : tri alphabétique ou numérique. Les valeurs vides sont à la fin.</p></section>
+    <p class="vide" style="font-size:12px;margin:0">Pour une colonne de type Choix, l’ordre des choix dans Grist est utilisé. Sinon, valeurs dans l’ordre voulu, séparées par « ; ». Sans ordre : tri alphabétique, numérique ou par date. Les valeurs vides sont à la fin.</p>
+    <div class="rg-sous">Colonnes proposées dans la liste « Trier par »</div>
+    <div class="rg-cols" style="max-height:180px;overflow:auto">${allCols.map(c => `<label style="display:block"><input type="checkbox" data-a="trc" data-c="${esc(c)}"${colsTri().includes(c) ? ' checked' : ''}> ${esc(libel(c))}</label>`).join('')}</div>
+    <p class="vide" style="font-size:12px;margin:0">Aucune case cochée : la liste n’affiche pas de « Trier par ».</p></section>
     ${blocSauvegarde()}`;
 }
 const AIDES_ONGLET = {
@@ -1831,7 +1847,7 @@ const cleLib = ks => ks.map(k => (LIB[k] || [])[0]).filter(Boolean);   // régla
 const CLES_ONGLET = { points:['taille', 'regroupement', 'distance_m', ...cleLib(['liste']), 'lib_liste2', 'ico_liste', 'ico_liste2', 'aide_liste', 'ouv_liste'], popup:['larg_popup', 'haut_popup', 'larg_noms', 'pn_taille', 'pn_fonte', 'pn_coul_on', 'pn_coul', 'pv_taille', 'pv_fonte', 'pv_coul_on', 'pv_coul'],
   fiche:['larg_fiche', 'taille_fiche', 'larg_noms', 'ouverture', 'fn_taille', 'fn_fonte', 'fn_coul_on', 'fn_coul', 'fv_taille', 'fv_fonte', 'fv_coul_on', 'fv_coul'], filtres:['pos_commune', 'commune_filtre', 'commune_contour', 'liste_max', 'sug_on', 'sug_max', 'sug_min', ...cleLib(['q', 'filtres', 'commune']), 'ico_filtres', 'aide_q', 'aide_filtres'],
   legende:['taille_legende', 'larg_pop_leg', 'haut_pop_leg', ...cleLib(['legende']), 'ico_legende', 'aide_legende', 'ouv_legende'], iti:['iti_lib_dep', 'iti_lib_arr', 'iti_ph', 'iti_niveau', 'iti_opt', 'iti_url', 'iti_resource', 'iti_titre', 'iti_avert', 'iti_avert_pied', ...cleLib(['iti']), 'ico_iti', 'aide_iti'],
-  prog:[...cleLib(['prog']), 'ico_prog', 'aide_prog', 'prog_titre'], general:['tri_col', 'tri_dir', 'tri_ordre', 'police', 'style_grist', 'aide_on', 'aide_delai', 'aide_taille', 'aide_fond', 'aide_coul'] };
+  prog:[...cleLib(['prog']), 'ico_prog', 'aide_prog', 'prog_titre'], general:['tri_col', 'tri_dir', 'tri_ordre', 'tri_cols', 'police', 'style_grist', 'aide_on', 'aide_delai', 'aide_taille', 'aide_fond', 'aide_coul'] };
 function dessiner() {
   const y = (modal.querySelector('.rg-corps') || {}).scrollTop || 0, av = avertOnglet();
   modal.innerHTML = `<div class="rg-onglet-reduit"><button type="button" data-a="reduire" aria-label="Rouvrir la configuration">⚙ Réglages ▸</button></div><div class="rg-boite" role="dialog" aria-label="Configurer le widget"><div class="rg-tete"><h2>Configurer le widget <small class="rg-ver">version ${VERSION}</small></h2><span id="rg-etat" class="rg-etat">${esc(etatSauv)}</span>${btn('reduire', '', '◂ Réduire', 'Réduire le volet pour voir toute la carte')}${btn('fermer', '', 'Fermer')}</div>
@@ -1964,7 +1980,7 @@ modal.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset.o) {
     const n = t.dataset.o, v = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (() => { const n = t.value === '' ? (t.dataset.zero ? 0 : +t.defaultValue) : +t.value; return Math.min(+t.max || 48, Math.max(+t.min, isNaN(n) ? +t.min : n)); })() : t.value;
-    opts[n] = v; construire(); enregistrer(); if (n === 'liste_devant' || n.endsWith('_coul_on')) dessiner(); return;
+    opts[n] = v; if (n.startsWith('tri_')) triU = null; construire(); enregistrer(); if (n === 'liste_devant' || n.endsWith('_coul_on')) dessiner(); return;
   }
   const a = t.dataset.a; if (!a) return;
   const g = t.dataset.g, i = +t.dataset.i, r = +t.dataset.r, k = +t.dataset.k, R = cfg.regles[r];
@@ -2011,7 +2027,8 @@ modal.addEventListener('change', e => {
     case 'fl': { const F = cfg.filtres[+t.dataset.i], f = t.dataset.f; if (F) { if (f === 'fond-on') F.fond = t.checked ? '#fff3bf' : ''; else if (f === 'coul-on') F.coul = t.checked ? '#161616' : ''; else if (f === 'fonte') { F.gras = t.value.includes('g'); F.ital = t.value.includes('i'); } else if (f === 'bouton') F.bouton = t.value === '1'; else if (t.type === 'checkbox') F[f] = t.checked; else F[f] = t.value; } break; }
     case 'st': { const X = cfg.styles[t.dataset.sk], f = t.dataset.f; if (f === 'coul-on') X.coul = t.checked ? '#161616' : ''; else if (f === 'fond-on') X.fond = t.checked ? '#e8eef7' : ''; else if (f === 'taille') X.taille = Math.max(0, Math.min(40, +t.value || 0)); else if (f === 'fonte') { X.gras = t.value.includes('g'); X.ital = t.value.includes('i'); } else if (t.type === 'checkbox') X[f] = t.checked; else X[f] = t.value; break; }
     case 'pg': { cfg.prog[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; break; }
-    case 'pi': { const X = cfg.prog.inds[+t.dataset.i], f = t.dataset.f; if (X) { if (f === 'baseon') X.base.on = t.checked; else if (f === 'masq' || f === 'masqVide' || f === 'masqZero' || f === 'total' || f === 'reste') X[f] = t.checked; else X[f] = t.value; } break; }
+    case 'trc': { const s = new Set(colsTri()); if (t.checked) s.add(t.dataset.c); else s.delete(t.dataset.c); opts.tri_cols = [...s].join(','); triU = null; break; }
+    case 'pi': { const X = cfg.prog.inds[+t.dataset.i], f = t.dataset.f; if (X) { if (f === 'baseon') X.base.on = t.checked; else if (f === 'masq' || f === 'masqVide' || f === 'masqZero' || f === 'total' || f === 'legPal' || f === 'reste') X[f] = t.checked; else X[f] = t.value; } break; }
     case 'pc': { const X = cfg.prog.inds[+t.dataset.i]; if (X) X[t.dataset.w][t.dataset.f] = t.value; break; }
     case 'pp': { const X = cfg.prog.inds[+t.dataset.i]; if (X) { const q = X.paliers[+t.dataset.j]; if (t.dataset.f === 'de') q.de = Math.max(0, Math.min(1000, +t.value || 0)); else q.couleur = t.value; X.paliers.sort((u, v) => u.de - v.de); X.paliers[0].de = 0; } break; }
     case 'disp': cfg.disposition[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.type === 'number' ? (+t.value ? Math.max(+t.min, Math.min(+t.max, +t.value)) : 0) : t.value; break;
