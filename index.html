@@ -306,7 +306,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '125';
+const VERSION = '126';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -792,12 +792,13 @@ function appliquerAffichage() {   // éléments affichés ou masqués, selon la 
 }
 function devant(d) { return etiquetteHtml(d.style, cfg.etiquettes.liste, d.vals); }
 let triU = null;   // tri choisi par la personne dans la liste : { c, d } (sinon tri de départ du configurateur)
-const colsTri = () => String(opt('tri_cols', '')).split(',').filter(c => c && allCols.includes(c));
+const colNom = () => (lastMap && lastMap.nom) || '', libNom = () => colNom() ? libel(colNom()) : 'Nom du point';   // colonne choisie comme « Nom des points »
+const colsTri = () => String(opt('tri_cols', '')).split(',').filter(c => c && c !== colNom() && allCols.includes(c));
 const triEnCours = () => triU || { c:'', d:'asc' };   // au départ : par nom, croissant
 function comparerListe(a, b) {   // tri de la liste des points : nom, ou colonne choisie (ordre des choix de Grist, ou ordre saisi)
   const { c, d } = triEnCours(), sg = d === 'desc' ? -1 : 1, nom = String(a.nom).localeCompare(String(b.nom), 'fr');
   if (!c) return sg * nom;
-  const val = m => typeof m.vals[c] === 'number' ? m.vals[c] : (fmt(c, m.vals[c]) ?? '');
+  const num = !refDe((typesT[tid] || {})[c] || ''), val = m => { const v = m.vals[c]; return typeof v === 'number' && num ? v : (fmt(c, v) ?? ''); };   // une colonne Référence se trie sur le texte affiché, pas sur le numéro de ligne
   const vide = v => v === '' || v === null || v === undefined, x = val(a), y = val(b);
   if (vide(x) || vide(y)) return vide(x) && vide(y) ? nom : vide(x) ? 1 : -1;   // valeurs vides toujours à la fin
   const ch = ((stylesT[tid] || {})[c] || {}).wo, choix = ch && Array.isArray(ch.choices) ? ch.choices : null;
@@ -808,7 +809,7 @@ function comparerListe(a, b) {   // tri de la liste des points : nom, ou colonne
 function barreTri() {   // « Trier par » + flèche, en haut de la liste (colonnes proposées par le configurateur)
   const cols = colsTri(); if (!cols.length) return '';
   const { c, d } = triEnCours(), liste = [...new Set(cols.concat(c ? [c] : []))];
-  return `<div class="liste-tri"><label>Trier par <select data-tri="c" aria-label="Trier par"><option value=""${c ? '' : ' selected'}>Nom</option>${liste.map(k => `<option value="${esc(k)}"${k === c ? ' selected' : ''}>${esc(libel(k))}</option>`).join('')}</select></label><button type="button" data-tri="d" title="Inverser l’ordre" aria-label="Inverser l’ordre (actuellement ${d === 'desc' ? 'décroissant' : 'croissant'})">${d === 'desc' ? '↓' : '↑'}</button></div>`;
+  return `<div class="liste-tri"><label>Trier par <select data-tri="c" aria-label="Trier par"><option value=""${c ? '' : ' selected'}>${esc(libNom())}</option>${liste.map(k => `<option value="${esc(k)}"${k === c ? ' selected' : ''}>${esc(libel(k))}</option>`).join('')}</select></label><button type="button" data-tri="d" title="Inverser l’ordre" aria-label="Inverser l’ordre (actuellement ${d === 'desc' ? 'décroissant' : 'croissant'})">${d === 'desc' ? '↓' : '↑'}</button></div>`;
 }
 function majListe() {
   if (!listeOuverte) return;
@@ -1289,12 +1290,24 @@ const iti = { ids:[], mode:'car', retour:false, depart:null, departLib:'', arriv
 const itiRoute = L.featureGroup().addTo(map), itiPts = L.layerGroup().addTo(map);
 let attendDepart = false;
 const hav = (a, b) => { const t = Math.PI / 180, dl = (b.lat - a.lat) * t, dn = (b.lng - a.lng) * t, x = Math.sin(dl / 2) ** 2 + Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dn / 2) ** 2; return 12742000 * Math.asin(Math.sqrt(x)); };
-const ptDe = id => { const m = marqueurs.get(id); return m ? m.getLatLng() : null; };
-const nomDe = id => { const m = marqueurs.get(id); return m ? (m._cifi.nom || 'Sans nom') : '(supprimé)'; };
+const adrEt = {};   // étapes qui sont une adresse ou un endroit de la carte : clé 'a1', 'a2'… → { pt, lib }
+let nAdrEt = 0;
+const ptDe = id => { if (typeof id === 'string') return adrEt[id] ? adrEt[id].pt : null; const m = marqueurs.get(id); return m ? m.getLatLng() : null; };
+const nomDe = id => { if (typeof id === 'string') return adrEt[id] ? adrEt[id].lib : '(supprimé)'; const m = marqueurs.get(id); return m ? (m._cifi.nom || 'Sans nom') : '(supprimé)'; };
+const itiAddAdr = (pt, lib) => { const k = 'a' + (++nAdrEt); adrEt[k] = { pt:L.latLng(pt.lat, pt.lng), lib }; iti.ids.push(k); };
 const fmtDist = m => m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(m) + ' m';
 const fmtDuree = s => { const m = Math.round(s / 60); return m >= 60 ? Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') : m + ' min'; };
-function itiChoisirPoint(id) {   // départ ou arrivée choisi en cliquant sur un point de la carte
-  const m = marqueurs.get(id), ro = attendDepart; attendDepart = false; if (!m) return;
+let carteArmee = false;
+function itiArmer() {   // le prochain clic sur la carte (hors point) est pris en compte : départ, arrivée ou étape
+  if (carteArmee) return; carteArmee = true;
+  map.once('click', e2 => { carteArmee = false; if (!attendDepart) return; const ro = attendDepart;
+    if (ro === 'etape') { itiAddAdr(e2.latlng, 'Endroit choisi sur la carte'); itiArmer(); }
+    else { attendDepart = false; if (ro === 'arr') { iti.arrivee = e2.latlng; iti.arriveeLib = ''; } else { iti.depart = e2.latlng; iti.departLib = ''; } }
+    itiReset(); itiDessiner(); });
+}
+function itiChoisirPoint(id) {   // départ, arrivée ou étape choisi en cliquant sur un point de la carte
+  const m = marqueurs.get(id), ro = attendDepart; if (ro !== 'etape') attendDepart = false; if (!m) return;
+  if (ro === 'etape') { if (!iti.ids.includes(id)) iti.ids.push(id); itiReset(); itiDessiner(); return; }   // les étapes se choisissent à la suite, jusqu'à « Terminer »
   const pt = m.getLatLng(), lib = m._cifi.nom || 'Sans nom';
   if (ro === 'arr') { iti.arrivee = pt; iti.arriveeLib = lib; } else { iti.depart = pt; iti.departLib = lib; }
   itiReset(); itiDessiner();
@@ -1334,7 +1347,7 @@ function pastilleIti(id) {   // pastille de la liste des points devant chaque é
   const m = opt('iti_niveau', true) !== false && marqueurs.get(id); return m ? devant(m._cifi) : '';
 }
 function itiResHtml() {   // résultats sous le champ actif : points de la carte (en direct), puis adresses (après recherche)
-  const A = iti.adr, adr = A.role !== 'etape' && A.q.trim().length >= 3 && !A.res.length ? `<li><button type="button" data-i="adr-go">🔎 Chercher l’adresse « ${esc(A.q.trim())} »</button></li>` : '';
+  const A = iti.adr, adr = A.q.trim().length >= 3 && !A.res.length ? `<li><button type="button" data-i="adr-go">🔎 Chercher l’adresse « ${esc(A.q.trim())} »</button></li>` : '';
   return A.pts.map((r, k) => `<li><button type="button" data-i="pt-ok" data-k="${k}">📌 ${esc(r.lib)}</button></li>`).join('') + A.res.map((r, k) => `<li><button type="button" data-i="adr-ok" data-k="${k}">🔎 ${esc(r.lib)}</button></li>`).join('') + adr + (A.msg ? `<li class="msg">${esc(A.msg)}</li>` : '');
 }
 function itiDessiner() {
@@ -1352,8 +1365,8 @@ function itiDessiner() {
       ${champ('arr', opt('iti_lib_arr', ITI_ARR), '🎯', iti.arrivee, iti.arriveeLib, finLeg)}
       <div class="iti-bloc"><div class="iti-tit">Étapes</div>
       ${iti.ids.length ? `<ol class="iti-liste">${iti.ids.map((id, k) => `<li><span class="num">${k + 1}</span><span>${pastilleIti(id)}${esc(nomDe(id))}${info(legDe(k))}</span><span><button type="button" data-i="up" data-k="${k}" aria-label="Monter">▲</button> <button type="button" data-i="down" data-k="${k}" aria-label="Descendre">▼</button> <button type="button" data-i="del" data-k="${k}" aria-label="Retirer">✕</button></span></li>`).join('')}</ol>` : ''}
-      <button type="button" class="iti-plus" data-i="plus">＋ Ajouter une étape</button>
-      ${A.ouvert && A.role === 'etape' ? `<div class="iti-champ"><input type="search" data-iti-q="etape" value="${esc(A.q)}" placeholder="Nom d’un point…" aria-label="Étape"></div>${res('etape')}` : ''}
+      <div class="iti-champ"><input type="search" data-iti-q="etape" value="${esc(A.role === 'etape' ? A.q : '')}" placeholder="${ph}" aria-label="Ajouter une étape"><button type="button" data-i="etape" class="iti-btn2" title="Choisir sur la carte" aria-label="Choisir sur la carte">📍</button></div>
+      ${attendDepart === 'etape' ? '<p class="vide" style="font-size:13px">Cliquez sur des points ou sur la carte… <button type="button" data-i="fin-etape" class="iti-btn2">Terminer</button></p>' : ''}${res('etape')}
       <div class="iti-actions"><button type="button" data-i="tous" class="iti-btn2">＋ Tous les points visibles</button></div>
       <div class="iti-actions"><button type="button" data-i="opt" class="iti-btn2">Optimiser l’ordre</button><button type="button" data-i="vider" class="iti-btn2">Supprimer</button></div></div>
       ${iti.arrivee ? '' : `<label style="font-size:14px"><input type="checkbox" id="iti-retour"${iti.retour ? ' checked' : ''}> Revenir au point de départ${iti.retour && finLeg !== undefined ? ' ' + info(finLeg) : ''}</label>`}
@@ -1365,7 +1378,7 @@ function itiDessiner() {
 }
 function itiOptimiser() {
   if (iti.ids.length < 2) return;
-  if (opt('iti_opt', 'distance') === 'tri') { iti.ids = iti.ids.filter(id => marqueurs.get(id)).sort((a, b) => comparerListe(marqueurs.get(a)._cifi, marqueurs.get(b)._cifi)); itiReset(); return; }   // selon le tri de la liste des points
+  if (opt('iti_opt', 'distance') === 'tri') { const pts = iti.ids.filter(id => marqueurs.get(id)).sort((a, b) => comparerListe(marqueurs.get(a)._cifi, marqueurs.get(b)._cifi)); iti.ids = pts.concat(iti.ids.filter(id => typeof id === 'string' && adrEt[id])); itiReset(); return; }   // les étapes-adresses viennent à la fin   // selon le tri de la liste des points
   const dep = iti.depart; let reste = iti.ids.slice(), ordre = [], cur = dep || ptDe(reste[0]);
   if (!dep) ordre.push(reste.shift());
   while (reste.length) { let bi = 0, bd = Infinity; reste.forEach((id, i) => { const d = hav(cur, ptDe(id)); if (d < bd) { bd = d; bi = i; } }); const id = reste.splice(bi, 1)[0]; ordre.push(id); cur = ptDe(id); }
@@ -1423,15 +1436,15 @@ itiPanel.addEventListener('click', e => {
     case 'del': iti.ids.splice(k, 1); itiReset(); break;
     case 'opt': itiOptimiser(); break;
     case 'calc': itiCalculer(); return;
-    case 'dep': case 'arr': attendDepart = a; map.once('click', e2 => { if (!attendDepart) return; const ro = attendDepart; attendDepart = false; if (ro === 'arr') { iti.arrivee = e2.latlng; iti.arriveeLib = ''; } else { iti.depart = e2.latlng; iti.departLib = ''; } itiReset(); itiDessiner(); }); break;
+    case 'dep': case 'arr': case 'etape': attendDepart = (a === 'etape' && attendDepart === 'etape') ? false : a; if (attendDepart) itiArmer(); break;
+    case 'fin-etape': attendDepart = false; break;
     case 'deldep': iti.depart = null; iti.departLib = ''; itiReset(); break;
     case 'delarr': iti.arrivee = null; iti.arriveeLib = ''; itiReset(); break;
-    case 'plus': iti.adr = { ...nouvAdr('etape'), ouvert:!(iti.adr.ouvert && iti.adr.role === 'etape') }; break;
     case 'adr-go': itiChercherAdresse(); return;
     case 'adr-ok': case 'pt-ok': { const r = (a === 'pt-ok' ? iti.adr.pts : iti.adr.res)[k], ro = iti.adr.role; if (r) {
-      if (ro === 'etape') { if (r.id !== undefined && !iti.ids.includes(r.id)) iti.ids.push(r.id); }
+      if (ro === 'etape') { if (r.id !== undefined) { if (!iti.ids.includes(r.id)) iti.ids.push(r.id); } else itiAddAdr(L.latLng(r.lat, r.lng), 'Adresse : ' + r.lib); }
       else { const pt = L.latLng(r.lat, r.lng), lib = r.id !== undefined ? r.lib : 'Adresse : ' + r.lib; if (ro === 'arr') { iti.arrivee = pt; iti.arriveeLib = lib; } else { iti.depart = pt; iti.departLib = lib; } }
-      iti.adr = nouvAdr(); itiReset(); } break; }
+      iti.adr = nouvAdr(ro === 'etape' ? 'etape' : undefined); itiReset(); } break; }
     case 'pos': itiPosition(); return;
     case 'copier': itiCopier(b); return;
     case 'imprimer': itiImprimer(); return;
@@ -1446,7 +1459,7 @@ itiPanel.addEventListener('input', e => {   // saisie dans un champ : les points
   const q = sansAccent(t.value); iti.adr.pts = q.length < 2 ? [] : [...marqueurs.values()].filter(m => sansAccent(m._cifi.nom || '').includes(q)).slice(0, 6).map(m => ({ id:m._cifi.id, lat:m.getLatLng().lat, lng:m.getLatLng().lng, lib:m._cifi.nom || 'Sans nom' }));
   const ul = itiPanel.querySelector(`[data-res="${role}"]`); if (ul) ul.innerHTML = itiResHtml();
 });
-itiPanel.addEventListener('keydown', e => { const ro = e.target && e.target.dataset && e.target.dataset.itiQ; if (e.key === 'Enter' && ro) { e.preventDefault(); if (ro !== 'etape') { iti.adr.role = ro; itiChercherAdresse(); } } });   // Entrée : recherche d'adresse
+itiPanel.addEventListener('keydown', e => { const ro = e.target && e.target.dataset && e.target.dataset.itiQ; if (e.key === 'Enter' && ro) { e.preventDefault(); iti.adr.role = ro; itiChercherAdresse(); } });   // Entrée : recherche d'adresse
 itiPanel.addEventListener('change', e => {
   const t = e.target;
   if (t.name === 'itimode') { iti.mode = t.value; itiReset(); itiDessiner(); }
@@ -1765,7 +1778,7 @@ function blocBarre() {
 function blocEntete(k) {
   const h = cfg.entetes[k], D = `data-a="eh" data-h="${k}"`, opts_ = (val, vide) => `<option value="">${vide}</option>` + allCols.map(c => `<option value="${esc(c)}"${c === val ? ' selected' : ''}>${esc(libel(c))}</option>`).join('');
   return `<section><h3>En-tête ${k === 'popup' ? 'du popup' : 'de la fiche'}</h3>
-    <label>Titre <select ${D} data-f="titre">${opts_(h.titre, 'Nom du point')}</select></label>
+    <label>Titre <select ${D} data-f="titre">${opts_(h.titre, libNom())}</select></label>
     <label>Sous-titre <select ${D} data-f="sous">${opts_(h.sous, 'Aucun')}</select></label>
     <label><input type="checkbox" ${D} data-f="etiq"${h.etiq ? ' checked' : ''}> Afficher l’étiquette de la règle d’affichage des points</label>
     <label>Fond <select ${D} data-f="fond"><option value="neutre"${h.fond === 'neutre' ? ' selected' : ''}>Gris clair</option><option value="point"${h.fond === 'point' ? ' selected' : ''}>Couleur du point</option><option value="perso"${h.fond === 'perso' ? ' selected' : ''}>Couleur personnalisée</option></select>
@@ -1823,7 +1836,7 @@ function contenuOnglet() {
     <section><h3>Tri de la liste des points</h3>
     <p class="vide" style="font-size:12px;margin:0">La liste est triée par nom. Cochez les colonnes que la personne pourra choisir dans « Trier par » ; aucune case cochée : pas de « Trier par ». Pour une colonne de type Choix, l’ordre des choix dans Grist est utilisé ; sinon l’ordre est alphabétique, numérique ou par date. Les valeurs vides sont à la fin.</p>
     <div class="rg-sous">Colonnes proposées dans la liste « Trier par »</div>
-    <div class="rg-cols" style="max-height:180px;overflow:auto">${allCols.map(c => `<label style="display:block"><input type="checkbox" data-a="trc" data-c="${esc(c)}"${colsTri().includes(c) ? ' checked' : ''}> ${esc(libel(c))}</label>`).join('')}</div>
+    <div class="rg-cols" style="max-height:180px;overflow:auto">${allCols.filter(c => c !== colNom()).map(c => `<label style="display:block"><input type="checkbox" data-a="trc" data-c="${esc(c)}"${colsTri().includes(c) ? ' checked' : ''}> ${esc(libel(c))}</label>`).join('')}</div>
 </section>
     ${blocSauvegarde()}`;
 }
