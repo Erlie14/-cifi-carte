@@ -152,7 +152,7 @@
   .fiche dl { font-size:var(--fs-popup,13px); } .fp-corps dl { font-size:var(--fs-fiche,14px); }
   .fiche h3 { font-size:calc(var(--fs-popup,13px) + 3px); } .fp-tete h2 { font-size:calc(var(--fs-fiche,14px) + 4px); }
   dt.i { font-style:italic; }
-  .rg-l2 label { display:inline-flex; align-items:center; gap:3px; margin:0; } .rg-lab { font-size:12px; color:var(--muted); margin-left:4px; }
+  .rg-l2 label { display:inline-flex; align-items:center; gap:3px; margin:0; }
   .commune input { width:220px; box-sizing:border-box; }
   #commune-res { margin-top:4px; } #commune-res button { display:block; width:100%; padding:6px 8px; font:inherit; font-size:13px; text-align:left; background:none; border:0; border-bottom:1px solid #eee; cursor:pointer; color:var(--ink); }
   #commune-res button:hover { background:#f6f6f6; } #commune-res small { color:var(--muted); }
@@ -294,9 +294,7 @@
   .iti-avert { margin:0 0 8px; padding:6px 10px; background:#fff4e5; border-left:3px solid #f4821f; border-radius:0; font-size:12.5px; }
   .iti-plus { width:100%; box-sizing:border-box; margin-top:8px; padding:10px; font:inherit; font-size:15px; font-weight:700; color:var(--accent); background:#fff; border:2px dashed var(--accent); cursor:pointer; }
   .iti-champ { display:flex; gap:4px; } .iti-champ input { flex:1; min-width:0; font:inherit; font-size:14px; padding:8px; border:1px solid var(--line); } .iti-val { display:flex; align-items:flex-start; gap:6px; padding:6px 8px; border:1px solid var(--line); background:#fafafa; } .iti-val > span { flex:1; } .iti-val small { display:block; color:var(--muted); } .iti-adr-res:empty { display:none; } .iti-adr-res .msg { padding:6px 8px; font-size:13px; color:var(--muted); }
-  .iti-adr { display:flex; gap:6px; margin:6px 0; } .iti-adr input { flex:1; min-width:0; font:inherit; font-size:13px; padding:6px 8px; border:1px solid var(--line); border-radius:0; }
   .iti-adr-res { list-style:none; margin:4px 0 8px; padding:0; border:1px solid var(--line); border-radius:0; } .iti-adr-res button { display:block; width:100%; text-align:left; font:inherit; font-size:13px; padding:6px 8px; background:none; border:0; border-bottom:1px solid #eee; cursor:pointer; } .iti-adr-res button:hover { background:#e3e3fd; }
-  .iti-inline { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; } .iti-inline .iti-tit { margin:0; }
   .iti-bloc { margin-top:10px; } .iti-tit { font-size:14px; margin-bottom:4px; }
 </style>
 </head>
@@ -306,7 +304,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '126';
+const VERSION = '129';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -416,7 +414,7 @@ const nInd = i => {
     : [{ de:0, couleur:'#e1000f' }, { de:Math.max(0, Math.min(200, +i.orange || 50)), couleur:'#f4821f' }, { de:Math.max(0, Math.min(200, +i.vert || 80)), couleur:'#2a9d8f' }];   // anciens réglages : seuils orange et vert
   pal.sort((a, b) => a.de - b.de); pal[0].de = 0;
   return { o:i.o === true, nom:String(i.nom || ''), grp:String(i.grp || ''), mode:['ratio', 'part', 'compte', 'somme', 'moyenne'].includes(i.mode) ? i.mode : 'ratio', num:String(i.num || i.fait || ''), den:String(i.den || i.att || ''), col:String(i.col || ''),
-    masq:i.masq !== false, masqVide:i.masqVide !== false, masqZero:i.masqZero === true, total:i.total !== false, legPal:i.legPal !== false, texte:String(i.texte || ''), forme:i.forme === 'carres' ? 'carres' : 'barre', nb:Math.max(2, Math.min(20, Math.round(+i.nb) || 10)), reste:i.reste === true, couleurReste:hex(i.couleurReste) || '#e1000f', libOk:String(i.libOk || ''), libReste:String(i.libReste || ''), cond:nCond(i.cond), base:nCond(i.base), libNum:String(i.libNum || ''), libDen:String(i.libDen || ''), unite:String(i.unite || ''), couleur:hex(i.couleur) || '#000091', paliers:pal };
+    masq:i.masq !== false, masqVide:i.masqVide !== false, masqZero:i.masqZero === true, total:i.total !== false, legPal:i.legPal !== false, texte:String(i.texte || ''), forme:i.forme === 'carres' ? 'carres' : 'barre', nb:Math.max(2, Math.min(20, Math.round(+i.nb) || 10)), reste:i.reste === true, couleurReste:hex(i.couleurReste) || '#e1000f', libOk:String(i.libOk || ''), libReste:String(i.libReste || ''), cond:nCond(i.cond), base:nCond(i.base), unite:String(i.unite || ''), couleur:hex(i.couleur) || '#000091', paliers:pal };
 };
 const nProg = p => { p = p || {}; return { inds:(p.inds || []).map(nInd), tri:['nom', 'asc', 'desc'].includes(p.tri) ? p.tri : 'nom', suivre:p.suivre !== false, clic:p.clic !== false }; };
 const norm = c => { c = c || {}; return { popup:(c.popup || []).map(nEntree), sections:(c.sections || []).map(nSec), regles:(c.regles || []).map(nRegle), defaut:nDef(c.defaut), entetes:{ popup:nEnt((c.entetes || {}).popup), fiche:nEnt((c.entetes || {}).fiche) }, encarts:normEncarts(c.encarts), disposition:nDisp(c.disposition), barre:nBarre(c.barre), messages:(c.messages || []).map(nMsg), recherche:nRech(c.recherche), styles:Object.fromEntries(Object.keys(STYLES_TXT).map(k => [k, nSt((c.styles || {})[k] || (k.startsWith('bt_') ? (c.styles || {}).boutons : null))])), filtres:(c.filtres || []).map(nFiltre), prog:nProg(c.prog), etiquettes:{ liste:nEtq((c.etiquettes || {}).liste), legende:nEtq((c.etiquettes || {}).legende) } }; };
@@ -795,8 +793,8 @@ let triU = null;   // tri choisi par la personne dans la liste : { c, d } (sinon
 const colNom = () => (lastMap && lastMap.nom) || '', libNom = () => colNom() ? libel(colNom()) : 'Nom du point';   // colonne choisie comme « Nom des points »
 const colsTri = () => String(opt('tri_cols', '')).split(',').filter(c => c && c !== colNom() && allCols.includes(c));
 const triEnCours = () => triU || { c:'', d:'asc' };   // au départ : par nom, croissant
-function comparerListe(a, b) {   // tri de la liste des points : nom, ou colonne choisie (ordre des choix de Grist, ou ordre saisi)
-  const { c, d } = triEnCours(), sg = d === 'desc' ? -1 : 1, nom = String(a.nom).localeCompare(String(b.nom), 'fr');
+function comparerListe(a, b, col, dir) {   // tri de la liste des points : nom, ou colonne choisie (ordre des choix de Grist, ou ordre saisi)
+  const { c, d } = col === undefined ? triEnCours() : { c:col, d:dir }, sg = d === 'desc' ? -1 : 1, nom = String(a.nom).localeCompare(String(b.nom), 'fr');
   if (!c) return sg * nom;
   const num = !refDe((typesT[tid] || {})[c] || ''), val = m => { const v = m.vals[c]; return typeof v === 'number' && num ? v : (fmt(c, v) ?? ''); };   // une colonne Référence se trie sur le texte affiché, pas sur le numéro de ligne
   const vide = v => v === '' || v === null || v === undefined, x = val(a), y = val(b);
@@ -911,7 +909,6 @@ function styleTexte(p) {   // un seul style pour toutes les listes de colonnes :
   const r = {}; ['n', 'v'].forEach(k => { const f = String(opt(p + k + '_fonte', 'n')), t = +opt(p + k + '_taille', 0); r[k] = { g:f.includes('g'), i:f.includes('i'), c:opt(p + k + '_coul_on', false) === true ? coul(opt(p + k + '_coul', '')) : '', t:t > 0 ? Math.min(40, t) : 0 }; });
   return r;
 }
-const stylePopup = () => styleTexte('p');
 function stylerCols(cols, p) {   // colonnes + styles à passer à lignes()
   const S = styleTexte(p);
   return { cols:cols.map(x => ({ ...x, gn:S.n.g, gi:S.n.i, vg:S.v.g, vi:S.v.i, cn:S.n.c, cw:S.v.c, ta:'' })), ps:{ n:S.n.t ? `font-size:${S.n.t}px;` : '', v:S.v.t ? `font-size:${S.v.t}px;` : '' } };
@@ -1232,13 +1229,6 @@ function ouvrirProg() { fermerFiche(); fermerIti(); progOuvert = true; progDessi
 function fermerProg() { if (voletAction === 'prog') { voletAction = null; majFleches(); } progOuvert = false; progPanel.classList.remove('ouvert'); progPanel.setAttribute('aria-hidden', 'true'); }
 const nbFr = n => Number(n).toLocaleString('fr-FR', { maximumFractionDigits:2 });
 const warnInd = x => x.mode === 'ratio' ? (!x.num || !x.den) : x.mode === 'part' ? !x.cond.c : (x.mode === 'somme' || x.mode === 'moyenne') ? !x.col : false;
-function progDescr(I) {
-  const lc = c => libel(c), cond = k => `${lc(k.c)} ${(OPS.find(o => o[0] === k.op) || [0, ''])[1]}${k.op === 'vide' || k.op === 'rempli' ? '' : ' « ' + k.v + ' »'}`;
-  if (I.mode === 'ratio') return `${I.libNum || lc(I.num)} sur ${I.libDen || lc(I.den)}`;
-  if (I.mode === 'part') return `Part des points : ${cond(I.cond)}${I.base.on && I.base.c ? ', parmi ceux où ' + cond(I.base) : ''}`;
-  if (I.mode === 'compte') return I.cond.c ? `Nombre de points : ${cond(I.cond)}` : 'Nombre de points';
-  return `${I.mode === 'somme' ? 'Somme' : 'Moyenne'} de ${lc(I.col)}`;
-}
 function progDessiner() {
   const P = cfg.prog, I = P.inds[progInd] || P.inds[0];
   const tete = '<div class="fp-tete" style="--niv:var(--accent)"><button type="button" class="fp-fermer" data-p="fermer" aria-label="Fermer">✕</button><h2>' + esc(opt('prog_titre', 'Progression')) + '</h2></div>';
@@ -1365,10 +1355,12 @@ function itiDessiner() {
       ${champ('arr', opt('iti_lib_arr', ITI_ARR), '🎯', iti.arrivee, iti.arriveeLib, finLeg)}
       <div class="iti-bloc"><div class="iti-tit">Étapes</div>
       ${iti.ids.length ? `<ol class="iti-liste">${iti.ids.map((id, k) => `<li><span class="num">${k + 1}</span><span>${pastilleIti(id)}${esc(nomDe(id))}${info(legDe(k))}</span><span><button type="button" data-i="up" data-k="${k}" aria-label="Monter">▲</button> <button type="button" data-i="down" data-k="${k}" aria-label="Descendre">▼</button> <button type="button" data-i="del" data-k="${k}" aria-label="Retirer">✕</button></span></li>`).join('')}</ol>` : ''}
-      <div class="iti-champ"><input type="search" data-iti-q="etape" value="${esc(A.role === 'etape' ? A.q : '')}" placeholder="${ph}" aria-label="Ajouter une étape"><button type="button" data-i="etape" class="iti-btn2" title="Choisir sur la carte" aria-label="Choisir sur la carte">📍</button></div>
-      ${attendDepart === 'etape' ? '<p class="vide" style="font-size:13px">Cliquez sur des points ou sur la carte… <button type="button" data-i="fin-etape" class="iti-btn2">Terminer</button></p>' : ''}${res('etape')}
+      <button type="button" class="iti-plus" data-i="plus">＋ Ajouter une étape</button>
+      ${(A.ouvert && A.role === 'etape') || attendDepart === 'etape' ? `<div class="iti-champ"><input type="search" data-iti-q="etape" value="${esc(A.role === 'etape' ? A.q : '')}" placeholder="${ph}" aria-label="Ajouter une étape"><button type="button" data-i="etape" class="iti-btn2" title="Choisir sur la carte" aria-label="Choisir sur la carte">📍</button></div>
+      ${attendDepart === 'etape' ? '<p class="vide" style="font-size:13px">Cliquez sur des points ou sur la carte… <button type="button" data-i="fin-etape" class="iti-btn2">Terminer</button></p>' : ''}${res('etape')}` : ''}
       <div class="iti-actions"><button type="button" data-i="tous" class="iti-btn2">＋ Tous les points visibles</button></div>
-      <div class="iti-actions"><button type="button" data-i="opt" class="iti-btn2">Optimiser l’ordre</button><button type="button" data-i="vider" class="iti-btn2">Supprimer</button></div></div>
+      ${opt('iti_col', '') ? `<div class="iti-tit" style="margin-top:8px">Optimiser l’ordre</div><div class="iti-actions"><button type="button" data-i="opt" class="iti-btn2">${esc(opt('iti_lib_opt1', 'Par le trajet'))}</button><button type="button" data-i="opt-col" class="iti-btn2">${esc(opt('iti_lib_opt2', 'Par ' + libel(opt('iti_col', ''))))}</button><button type="button" data-i="opt-dir" class="iti-btn2" title="Inverser l’ordre" aria-label="Inverser l’ordre (actuellement ${itiDir === 'desc' ? 'décroissant' : 'croissant'})">${itiDir === 'desc' ? '↓' : '↑'}</button></div>` : '<div class="iti-actions"><button type="button" data-i="opt" class="iti-btn2">Optimiser l’ordre</button></div>'}
+      <div class="iti-actions"><button type="button" data-i="vider" class="iti-btn2">Supprimer</button></div></div>
       ${iti.arrivee ? '' : `<label style="font-size:14px"><input type="checkbox" id="iti-retour"${iti.retour ? ' checked' : ''}> Revenir au point de départ${iti.retour && finLeg !== undefined ? ' ' + info(finLeg) : ''}</label>`}
       <div class="iti-actions"><button type="button" data-i="calc" class="prim">Calculer l’itinéraire</button></div>
       ${iti.msg ? `<p class="vide" style="font-size:13px">${esc(iti.msg)}</p>` : ''}
@@ -1376,9 +1368,10 @@ function itiDessiner() {
     </div><div class="fp-pied"><button type="button" class="iti-btn2" data-i="copier">Copier la feuille de route</button> <button type="button" class="iti-btn2" data-i="imprimer">Imprimer</button></div>`;
   itiMarques();
 }
-function itiOptimiser() {
+let itiDir = 'asc';   // sens du tri « selon une colonne »
+function itiOptimiser(parColonne) {
   if (iti.ids.length < 2) return;
-  if (opt('iti_opt', 'distance') === 'tri') { const pts = iti.ids.filter(id => marqueurs.get(id)).sort((a, b) => comparerListe(marqueurs.get(a)._cifi, marqueurs.get(b)._cifi)); iti.ids = pts.concat(iti.ids.filter(id => typeof id === 'string' && adrEt[id])); itiReset(); return; }   // les étapes-adresses viennent à la fin   // selon le tri de la liste des points
+  if (parColonne) { const c = opt('iti_col', ''), pts = iti.ids.filter(id => marqueurs.get(id)).sort((a, b) => comparerListe(marqueurs.get(a)._cifi, marqueurs.get(b)._cifi, c, itiDir)); iti.ids = pts.concat(iti.ids.filter(id => typeof id === 'string' && adrEt[id])); itiReset(); return; }   // les étapes-adresses viennent à la fin   // selon le tri de la liste des points
   const dep = iti.depart; let reste = iti.ids.slice(), ordre = [], cur = dep || ptDe(reste[0]);
   if (!dep) ordre.push(reste.shift());
   while (reste.length) { let bi = 0, bd = Infinity; reste.forEach((id, i) => { const d = hav(cur, ptDe(id)); if (d < bd) { bd = d; bi = i; } }); const id = reste.splice(bi, 1)[0]; ordre.push(id); cur = ptDe(id); }
@@ -1435,8 +1428,11 @@ itiPanel.addEventListener('click', e => {
     case 'up': case 'down': { const j = k + (a === 'up' ? -1 : 1); if (j >= 0 && j < iti.ids.length) { [iti.ids[k], iti.ids[j]] = [iti.ids[j], iti.ids[k]]; itiReset(); } break; }
     case 'del': iti.ids.splice(k, 1); itiReset(); break;
     case 'opt': itiOptimiser(); break;
+    case 'opt-col': itiOptimiser(true); break;
+    case 'opt-dir': itiDir = itiDir === 'desc' ? 'asc' : 'desc'; itiOptimiser(true); break;
     case 'calc': itiCalculer(); return;
     case 'dep': case 'arr': case 'etape': attendDepart = (a === 'etape' && attendDepart === 'etape') ? false : a; if (attendDepart) itiArmer(); break;
+    case 'plus': iti.adr = { ...nouvAdr('etape'), ouvert:!(iti.adr.ouvert && iti.adr.role === 'etape') }; if (!iti.adr.ouvert) attendDepart = false; break;
     case 'fin-etape': attendDepart = false; break;
     case 'deldep': iti.depart = null; iti.departLib = ''; itiReset(); break;
     case 'delarr': iti.arrivee = null; iti.arriveeLib = ''; itiReset(); break;
@@ -1444,7 +1440,7 @@ itiPanel.addEventListener('click', e => {
     case 'adr-ok': case 'pt-ok': { const r = (a === 'pt-ok' ? iti.adr.pts : iti.adr.res)[k], ro = iti.adr.role; if (r) {
       if (ro === 'etape') { if (r.id !== undefined) { if (!iti.ids.includes(r.id)) iti.ids.push(r.id); } else itiAddAdr(L.latLng(r.lat, r.lng), 'Adresse : ' + r.lib); }
       else { const pt = L.latLng(r.lat, r.lng), lib = r.id !== undefined ? r.lib : 'Adresse : ' + r.lib; if (ro === 'arr') { iti.arrivee = pt; iti.arriveeLib = lib; } else { iti.depart = pt; iti.departLib = lib; } }
-      iti.adr = nouvAdr(ro === 'etape' ? 'etape' : undefined); itiReset(); } break; }
+      iti.adr = ro === 'etape' ? { ...nouvAdr('etape'), ouvert:true } : nouvAdr(); itiReset(); } break; }
     case 'pos': itiPosition(); return;
     case 'copier': itiCopier(b); return;
     case 'imprimer': itiImprimer(); return;
@@ -1796,7 +1792,11 @@ function blocIti() {
     <label>Texte d’aide dans les champs <input type="text" data-o="iti_ph" value="${esc(opt('iti_ph', ITI_PH))}"></label></section>
     <section><h3>Points de l’itinéraire</h3>
     <label><input type="checkbox" data-o="iti_niveau"${opt('iti_niveau', true) !== false ? ' checked' : ''}> Afficher la pastille de chaque point (comme dans la liste des points)</label>
-    <label>« Optimiser l’ordre des points » classe selon ${selectHtml('data-o="iti_opt"', [['distance', 'La distance (trajet le plus court)'], ['tri', 'Le tri de la liste des points (onglet Général)']], opt('iti_opt', 'distance'))}</label></section>
+    <div class="rg-sous">Optimiser l’ordre des étapes</div>
+    <label>Colonne proposée pour optimiser ${selectHtml('data-o="iti_col"', colsOpt(allCols), opt('iti_col', ''), 'Aucune (un seul bouton, selon le trajet)')}</label>
+    <label>Texte du bouton « trajet » <input type="text" data-o="iti_lib_opt1" value="${esc(opt('iti_lib_opt1', 'Par le trajet'))}"></label>
+    <label>Texte du bouton « colonne » <input type="text" data-o="iti_lib_opt2" value="${esc(opt('iti_lib_opt2', opt('iti_col', '') ? 'Par ' + libel(opt('iti_col', '')) : ''))}"></label>
+    <p class="vide" style="font-size:12px;margin:0">Deux boutons côte à côte : le trajet le plus court, ou l’ordre de la colonne choisie (une flèche inverse le sens). Pour une colonne de type Choix, l’ordre des choix dans Grist est utilisé.</p></section>
     <section><h3>Service de calcul</h3><label>Adresse du service de calcul d’itinéraire <input type="text" data-o="iti_url" value="${esc(opt('iti_url', 'https://data.geopf.fr/navigation/itineraire'))}"></label>
     <label>Ressource <input type="text" data-o="iti_resource" value="${esc(opt('iti_resource', 'bdtopo-osrm'))}"></label></section>`;
 }
@@ -1856,7 +1856,7 @@ function majCfgClasses() { const b = document.body; if (b && b.classList) b.clas
 const cleLib = ks => ks.map(k => (LIB[k] || [])[0]).filter(Boolean);   // réglages (hors cfg) remis à zéro par « Réinitialiser cet onglet »
 const CLES_ONGLET = { points:['taille', 'regroupement', 'distance_m', ...cleLib(['liste']), 'lib_liste2', 'ico_liste', 'ico_liste2', 'aide_liste', 'ouv_liste'], popup:['larg_popup', 'haut_popup', 'larg_noms', 'pn_taille', 'pn_fonte', 'pn_coul_on', 'pn_coul', 'pv_taille', 'pv_fonte', 'pv_coul_on', 'pv_coul'],
   fiche:['larg_fiche', 'taille_fiche', 'larg_noms', 'ouverture', 'fn_taille', 'fn_fonte', 'fn_coul_on', 'fn_coul', 'fv_taille', 'fv_fonte', 'fv_coul_on', 'fv_coul'], filtres:['pos_commune', 'commune_filtre', 'commune_contour', 'liste_max', 'sug_on', 'sug_max', 'sug_min', ...cleLib(['q', 'filtres', 'commune']), 'ico_filtres', 'aide_q', 'aide_filtres'],
-  legende:['taille_legende', 'larg_pop_leg', 'haut_pop_leg', ...cleLib(['legende']), 'ico_legende', 'aide_legende', 'ouv_legende'], iti:['iti_lib_dep', 'iti_lib_arr', 'iti_ph', 'iti_niveau', 'iti_opt', 'iti_url', 'iti_resource', 'iti_titre', 'iti_avert', 'iti_avert_pied', ...cleLib(['iti']), 'ico_iti', 'aide_iti'],
+  legende:['taille_legende', 'larg_pop_leg', 'haut_pop_leg', ...cleLib(['legende']), 'ico_legende', 'aide_legende', 'ouv_legende'], iti:['iti_lib_dep', 'iti_lib_arr', 'iti_ph', 'iti_niveau', 'iti_col', 'iti_lib_opt1', 'iti_lib_opt2', 'iti_url', 'iti_resource', 'iti_titre', 'iti_avert', 'iti_avert_pied', ...cleLib(['iti']), 'ico_iti', 'aide_iti'],
   prog:[...cleLib(['prog']), 'ico_prog', 'aide_prog', 'prog_titre'], general:['tri_cols', 'police', 'style_grist', 'aide_on', 'aide_delai', 'aide_taille', 'aide_fond', 'aide_coul'] };
 function dessiner() {
   const y = (modal.querySelector('.rg-corps') || {}).scrollTop || 0, av = avertOnglet();
