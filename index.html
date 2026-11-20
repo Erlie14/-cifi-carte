@@ -167,6 +167,8 @@
   .pulse { position:absolute; left:0; top:0; z-index:-1; border-radius:50%; background:var(--bc); opacity:.5; animation:pulse 1.6s ease-out infinite; pointer-events:none; }
   .leg-sym { position:relative; display:inline-flex; align-items:center; vertical-align:middle; isolation:isolate; }
   .bul.coin.leg-coin { font-size:9px; padding:1px 3px; min-width:12px; right:-3px; top:-5px; }
+  .fiche dd, .fp-corps dd, .mini td { text-align:justify; hyphens:auto; }   /* textes justifiés ; les mots longs sont coupés proprement (langue : français) */
+  table.mini.vert th { position:sticky; left:0; z-index:1; background:#fff; }   /* avec beaucoup d'enregistrements, les noms des champs restent visibles pendant le défilement */
   table.mini.vert th { vertical-align:top; background:none; font-weight:var(--th-w, 400); color:var(--th-c, var(--muted)); white-space:nowrap; border-bottom:1px solid #eee; } table.mini.vert td { min-width:90px; }
   @keyframes pulse { 0% { transform:scale(.8); opacity:.6; } 100% { transform:scale(2.3); opacity:0; } }
   @media (prefers-reduced-motion:reduce) { .pulse { animation:none; opacity:.25; transform:scale(1.5); } }
@@ -304,7 +306,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '115';
+const VERSION = '116';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
