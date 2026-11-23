@@ -186,7 +186,8 @@
   .iti-liste button { font-size:12px; padding:2px 6px; border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer; }
   .iti-num { width:18px; height:18px; border-radius:50%; background:#161616; color:#fff; font:700 11px/14px system-ui; text-align:center; border:2px solid #fff; box-shadow:0 0 0 1px #0006; box-sizing:border-box; }
   .iti-total { margin-top:10px; font-weight:600; }
-  @media print { body.imprime-iti > *:not(#map):not(#iti-panel):not(script):not(style) { display:none !important; } body.imprime-iti .leaflet-control-container { display:none !important; } body.imprime-iti { overflow:visible; height:auto; -webkit-print-color-adjust:exact; print-color-adjust:exact; } body.imprime-iti #map { position:relative; width:100%; height:120mm; } body.imprime-iti #iti-panel { position:static; transform:none; visibility:visible; width:auto; box-shadow:none; }
+  body.imprime-iti #map { width:190mm !important; height:120mm !important; }   /* la carte prend la taille de la feuille avant d'être cadrée */
+  @media print { body.imprime-iti > *:not(#map):not(#iti-panel):not(script):not(style) { display:none !important; } body.imprime-iti .leaflet-control-container { display:none !important; } body.imprime-iti { overflow:visible; height:auto; -webkit-print-color-adjust:exact; print-color-adjust:exact; }  body.imprime-iti #iti-panel { position:static; transform:none; visibility:visible; width:auto; box-shadow:none; }
     body.imprime-iti .iti-actions, body.imprime-iti .fp-pied, body.imprime-iti .fp-fermer, body.imprime-iti .iti-liste button, body.imprime-iti .iti-ligne, body.imprime-iti #iti-retour { display:none; } }
   /* Police Marianne (réservée à l'État) : fournie localement (dossier lib/fonts) ou installée sur le poste */
   @font-face { font-family:Marianne; font-weight:400; font-style:normal; font-display:swap; src:local('Marianne'), local('Marianne-Regular'), url('./lib/fonts/Marianne-Regular.woff2') format('woff2'); }
@@ -305,7 +306,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '131';
+const VERSION = '134';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -827,10 +828,20 @@ function filtreHtml(f) {
   if (f.type === 'oui' && f.bouton) { const on = sl.size > 0; return `<button type="button" class="flt-btn${on ? ' on' : ''}" data-c="${esc(c)}" data-nom="${esc(nom)}" aria-pressed="${on}"${fs(f)}>${on ? '✓ ' : ''}${esc(nom)}</button>`; }
   if (f.type === 'oui') return `<label class="flt"${fs(f)}><input type="checkbox" data-c="${esc(c)}" data-t="oui"${sl.size ? ' checked' : ''}> ${esc(nom)}</label>`;
   if (f.type === 'curseur') { const pos = sl.has('__oui__') ? 1 : sl.has('__non__') ? 2 : 0; return `<label class="flt"${fs(f)}>${esc(nom)}<span class="cur"><input type="range" min="0" max="2" step="1" value="${pos}" data-c="${esc(c)}" data-t="curseur" aria-label="${esc(nom)} : tous, oui ou non"><span class="cur-l">${['Tous', 'Oui', 'Non'].map((t, i) => `<span${i === pos ? ' class="on"' : ''}>${t}</span>`).join('')}</span></span></label>`; }
-  const vals = [...new Set([...marqueurs.values()].map(x => x._cifi.fv[c]))].filter(v => v !== undefined && v !== '' && v !== '(vide)').sort((a, b) => String(a).localeCompare(String(b), 'fr')).slice(0, 1000);
+  const vals = ordreValeurs(c, [...new Set([...marqueurs.values()].map(x => x._cifi.fv[c]))].filter(v => v !== undefined && v !== '' && v !== '(vide)')).slice(0, 1000);
   if (f.type === 'unique') return `<label class="flt"${fs(f)}>${esc(nom)}<select data-c="${esc(c)}" data-t="unique">${f.tous !== false ? `<option value="">${esc(f.tousTxt || 'Tous')}</option>` : ''}${vals.map(v => `<option${sl.has(v) ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label>`;
   const ouv = etatFiltres.has(c) ? etatFiltres.get(c) : opt('filtres_sous_ouvert', false) === true;
   return `<details class="flt-d${f.menu ? ' menu' : ''}" data-c="${esc(c)}"${ouv ? ' open' : ''}><summary${fs(f)}>${esc(titreMulti(f, [...sl]))}</summary><div class="liste">${f.menu ? '<input type="search" class="flt-rech" placeholder="Rechercher…" aria-label="Rechercher dans la liste">' + (f.bt ? '<button type="button" class="flt-eff" data-c="' + esc(c) + '" data-tout="1">Tous</button><button type="button" class="flt-eff" data-c="' + esc(c) + '">Aucun</button>' : '') : ''}${vals.map(v => `<label><input type="checkbox" data-c="${esc(c)}" value="${esc(v)}"${sl.has(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('')}</div></details>`;
+}
+function ordreValeurs(c, vs) {   // ordre des choix d'un filtre : celui des choix dans Grist, sinon date, nombre ou ordre alphabétique
+  const t = (typesT[tid] || {})[c] || '', wo = ((stylesT[tid] || {})[c] || {}).wo || {}, choix = /^Choice/.test(t) && Array.isArray(wo.choices) ? wo.choices.map(String) : [];
+  const brut = new Map(); marqueurs.forEach(m => { if (!brut.has(m._cifi.fv[c])) brut.set(m._cifi.fv[c], m._cifi.vals[c]); });
+  const rang = v => { const l = (Array.isArray(v) ? v : [v]).map(e => choix.indexOf(String(e))).filter(i => i >= 0); return l.length ? Math.min(...l) : choix.length; };
+  const alpha = (a, b) => String(a).localeCompare(String(b), 'fr', { numeric:true });
+  return vs.sort((a, b) => { const x = brut.get(a), y = brut.get(b);
+    if (choix.length) return rang(x) - rang(y) || alpha(a, b);
+    if (typeof x === 'number' && typeof y === 'number' && !refDe(t)) return x - y || alpha(a, b);
+    return alpha(a, b); });
 }
 function filtresParDefaut() {   // sans « Tous », la première valeur d'une liste est sélectionnée
   filtresDefs.forEach(f => { if (f.type === 'unique' && f.tous === false) { const v = valsDe(f.c); if (v.length && !(filtreSel[f.c] && filtreSel[f.c].length)) filtreSel[f.c] = [v[0]]; } });
@@ -1132,7 +1143,7 @@ function construire() {
   if (legCats.length && presents.has(-1)) legCats.push({ k:'r-1', label:'Autres', couleur:cfg.defaut.couleur, forme:cfg.defaut.forme, emoji:'', bordc:cfg.defaut.bordc, borde:cfg.defaut.borde, pulse:null, coin:null });
   majLegende();
 
-  const valsDe = c => [...new Set([...marqueurs.values()].map(x => x._cifi.fv[c]))].filter(v => v !== undefined && v !== '' && v !== '(vide)').sort((a, b) => String(a).localeCompare(String(b), 'fr')).slice(0, 1000);
+  const valsDe = c => ordreValeurs(c, [...new Set([...marqueurs.values()].map(x => x._cifi.fv[c]))].filter(v => v !== undefined && v !== '' && v !== '(vide)')).slice(0, 1000);
   const defSig = JSON.stringify([opt('filtres_titre_on', true), optBrut('filtres_titre', 'Filtres'), opt('ico_filtres', opt('filtres_ico', '')), opt('filtres_ouvert', true), opt('filtres_sous_ouvert', false)]);
   if (defSig !== sigFiltresDef) { sigFiltresDef = defSig; etatFiltres.clear(); filtresSecOuvert = opt('filtres_ouvert', true) !== false; sigFiltres = ''; }
   const sig = JSON.stringify(filtresDefs.map(f => [f.c, f.nom, f.type, f.oui, f.non, f.fond, f.coul, f.gras, f.bouton, f.hors, f.aide, f.ital, f.tous, f.tousTxt, (f.type === 'oui' || f.type === 'curseur') ? 0 : valsDe(f.c)]));
@@ -1305,8 +1316,8 @@ function itiChoisirPoint(id) {   // départ, arrivée ou étape choisi en cliqua
   if (ro === 'arr') { iti.arrivee = pt; iti.arriveeLib = lib; } else { iti.depart = pt; iti.departLib = lib; }
   itiReset(); itiDessiner();
 }
-let itiOrdre = null;   // dernier classement lancé : 'trajet', 'col' ou null (l'ordre a été modifié depuis)
-function itiReset() { itiOrdre = null; iti.legs = []; iti.total = null; iti.msg = ''; itiRoute.clearLayers(); }
+let itiOrdre = 'trajet', itiRecalc = false;   // classement choisi : 'trajet', 'col' ou null ; il se refait tout seul à chaque changement, jusqu'à ce qu'on déplace une étape à la main
+function itiReset() { if (itiOrdre && !itiRecalc && iti.ids.length > 1 && iti.ids.length <= 40) { itiRecalc = true; try { itiOptimiserCalc(itiOrdre === 'col'); } finally { itiRecalc = false; } } iti.legs = []; iti.total = null; iti.msg = ''; itiRoute.clearLayers(); }
 function itiAjouter(ids) { ids.forEach(id => { if (!iti.ids.includes(id) && marqueurs.has(id)) iti.ids.push(id); }); itiReset(); ouvrirIti(); }
 function ouvrirIti() { fermerFiche(); fermerProg(); itiDessiner(); itiPanel.classList.add('ouvert'); itiPanel.setAttribute('aria-hidden', 'false'); voletAction = 'iti'; majFleches(); }
 function fermerIti() { if (voletAction === 'iti') { voletAction = null; majFleches(); } attendDepart = false; itiPanel.classList.remove('ouvert'); itiPanel.setAttribute('aria-hidden', 'true'); }
@@ -1352,6 +1363,7 @@ function itiDessiner() {
   const champ = (role, titre, ico, pt, lib, leg) => `<div class="iti-bloc"><div class="iti-tit">${esc(titre)}</div>${pt
     ? `<div class="iti-val">${ico} <span>${esc(lib || 'point choisi sur la carte')}${info(leg)}</span><button type="button" data-i="${role === 'dep' ? 'deldep' : 'delarr'}" class="iti-btn2" aria-label="Retirer">✕</button></div>`
     : `<div class="iti-champ"><input type="search" data-iti-q="${role}" value="${esc(A.role === role ? A.q : '')}" placeholder="${ph}" aria-label="${esc(titre)}"><button type="button" data-i="${role}" class="iti-btn2" title="Choisir sur la carte" aria-label="Choisir sur la carte">📍</button>${role === 'dep' && opt('iti_pos', true) !== false ? '<button type="button" data-i="pos" class="iti-btn2" title="Ma position" aria-label="Ma position">🧭</button>' : ''}</div>${attendDepart === role ? '<p class="vide" style="font-size:13px">Cliquez sur un point ou sur la carte…</p>' : ''}${res(role)}`}</div>`;
+  const defil = (itiPanel.querySelector('.fp-corps') || {}).scrollTop || 0;
   itiPanel.innerHTML = `<div class="fp-tete" style="--niv:var(--accent)"><button type="button" class="fp-fermer" data-i="fermer" aria-label="Fermer">✕</button><h2>${esc(opt('iti_titre', 'Itinéraire'))}</h2></div>
     <div class="fp-corps">${itiAvert()}
       <div class="iti-ligne"><label><input type="radio" name="itimode" value="car"${iti.mode === 'car' ? ' checked' : ''}> 🚗 Voiture</label><label><input type="radio" name="itimode" value="pedestrian"${iti.mode === 'pedestrian' ? ' checked' : ''}> 🚶 À pied</label></div>
@@ -1363,17 +1375,18 @@ function itiDessiner() {
       ${(A.ouvert && A.role === 'etape') || attendDepart === 'etape' ? `<div class="iti-champ"><input type="search" data-iti-q="etape" value="${esc(A.role === 'etape' ? A.q : '')}" placeholder="${ph}" aria-label="Ajouter une étape"><button type="button" data-i="etape" class="iti-btn2" title="Choisir sur la carte" aria-label="Choisir sur la carte">📍</button></div>
       ${attendDepart === 'etape' ? '<p class="vide" style="font-size:13px">Cliquez sur des points ou sur la carte… <button type="button" data-i="fin-etape" class="iti-btn2">Terminer</button></p>' : ''}${res('etape')}` : ''}
       <div class="iti-actions"><button type="button" data-i="tous" class="iti-btn2">＋ Tous les points visibles</button></div>
-      ${opt('iti_col', '') ? `<div class="iti-tit" style="margin-top:8px">Optimiser l’ordre</div><div class="iti-actions"><button type="button" data-i="opt" class="iti-btn2${itiOrdre === 'trajet' ? ' on' : ''}" aria-pressed="${itiOrdre === 'trajet'}">${itiOrdre === 'trajet' ? '✓ ' : ''}${esc(opt('iti_lib_opt1', 'Par le trajet'))}</button><button type="button" data-i="opt-col" class="iti-btn2${itiOrdre === 'col' ? ' on' : ''}" aria-pressed="${itiOrdre === 'col'}">${itiOrdre === 'col' ? '✓ ' : ''}${esc(opt('iti_lib_opt2', 'Par ' + libel(opt('iti_col', ''))))}</button><button type="button" data-i="opt-dir" class="iti-btn2${itiOrdre === 'col' ? ' on' : ''}" title="Inverser l’ordre" aria-label="Inverser l’ordre (actuellement ${itiDir === 'desc' ? 'décroissant' : 'croissant'})">${itiDir === 'desc' ? '↓' : '↑'}</button></div>` : '<div class="iti-actions"><button type="button" data-i="opt" class="iti-btn2">Optimiser l’ordre</button></div>'}
+      ${!iti.ids.length ? '' : opt('iti_col', '') ? `<div class="iti-tit" style="margin-top:8px">Optimiser l’ordre</div><div class="iti-actions"><button type="button" data-i="opt" class="iti-btn2${itiOrdre === 'trajet' ? ' on' : ''}" aria-pressed="${itiOrdre === 'trajet'}">${itiOrdre === 'trajet' ? '✓ ' : ''}${esc(opt('iti_lib_opt1', 'Par le trajet'))}</button><button type="button" data-i="opt-col" class="iti-btn2${itiOrdre === 'col' ? ' on' : ''}" aria-pressed="${itiOrdre === 'col'}">${itiOrdre === 'col' ? '✓ ' : ''}${esc(opt('iti_lib_opt2', 'Par ' + libel(opt('iti_col', ''))))}</button><button type="button" data-i="opt-dir" class="iti-btn2${itiOrdre === 'col' ? ' on' : ''}" title="Inverser l’ordre" aria-label="Inverser l’ordre (actuellement ${itiDir === 'desc' ? 'décroissant' : 'croissant'})">${itiDir === 'desc' ? '↓' : '↑'}</button></div>` : '<div class="iti-actions"><button type="button" data-i="opt" class="iti-btn2">Optimiser l’ordre</button></div>'}
       <div class="iti-actions"><button type="button" data-i="vider" class="iti-btn2">Supprimer</button></div></div>
       ${iti.arrivee ? '' : `<label style="font-size:14px"><input type="checkbox" id="iti-retour"${iti.retour ? ' checked' : ''}> Revenir au point de départ${iti.retour && finLeg !== undefined ? ' ' + info(finLeg) : ''}</label>`}
       <div class="iti-actions"><button type="button" data-i="calc" class="prim">Calculer l’itinéraire</button></div>
       ${iti.msg ? `<p class="vide" style="font-size:13px">${esc(iti.msg)}</p>` : ''}
       ${iti.total ? `<div class="iti-total">Total : ${fmtDist(iti.total.d)} · ${fmtDuree(iti.total.t)}</div>` : ''}
     </div><div class="fp-pied"><button type="button" class="iti-btn2" data-i="imprimer">Imprimer</button></div>`;
+  const cp = itiPanel.querySelector('.fp-corps'); if (cp) cp.scrollTop = defil;   // le panneau ne remonte pas à chaque changement
   itiMarques();
 }
 let itiDir = 'asc';   // sens du tri « selon une colonne »
-function itiOptimiser(pc) { if (iti.ids.length < 2) return; itiOptimiserCalc(pc); itiOrdre = pc ? 'col' : 'trajet'; }
+function itiOptimiser(pc) { itiOrdre = pc ? 'col' : 'trajet'; itiRecalc = true; try { if (iti.ids.length > 1) itiOptimiserCalc(pc); itiReset(); } finally { itiRecalc = false; } }
 function itiOptimiserCalc(parColonne) {
   if (iti.ids.length < 2) return;
   if (parColonne) { const c = opt('iti_col', ''), pts = iti.ids.filter(id => marqueurs.get(id)).sort((a, b) => comparerListe(marqueurs.get(a)._cifi, marqueurs.get(b)._cifi, c, itiDir)); iti.ids = pts.concat(iti.ids.filter(id => typeof id === 'string' && adrEt[id])); itiReset(); return; }   // les étapes-adresses viennent à la fin   // selon le tri de la liste des points
@@ -1427,12 +1440,10 @@ itiPanel.addEventListener('click', e => {
   switch (a) {
     case 'fermer': fermerIti(); return;
     case 'tous': itiAjouter([...marqueurs.values()].filter(m => cluster.hasLayer(m)).sort((x, y) => String(x._cifi.nom).localeCompare(String(y._cifi.nom), 'fr')).map(m => m._cifi.id)); return;
-    case 'vider': iti.ids = []; itiReset(); break;
-    case 'up': case 'down': { const j = k + (a === 'up' ? -1 : 1); if (j >= 0 && j < iti.ids.length) { [iti.ids[k], iti.ids[j]] = [iti.ids[j], iti.ids[k]]; itiReset(); } break; }
+    case 'vider': iti.ids = []; itiOrdre = 'trajet'; itiReset(); break;
+    case 'up': case 'down': { const j = k + (a === 'up' ? -1 : 1); if (j >= 0 && j < iti.ids.length) { [iti.ids[k], iti.ids[j]] = [iti.ids[j], iti.ids[k]]; itiOrdre = null; itiReset(); } break; }
     case 'del': iti.ids.splice(k, 1); itiReset(); break;
-    case 'opt': itiOptimiser(); break;
-    case 'opt-col': itiOptimiser(true); break;
-    case 'opt-dir': itiDir = itiDir === 'desc' ? 'asc' : 'desc'; itiOptimiser(true); break;
+    case 'opt': case 'opt-col': case 'opt-dir': { const avait = !!iti.total; if (a === 'opt-dir') itiDir = itiDir === 'desc' ? 'asc' : 'desc'; itiOptimiser(a !== 'opt'); if (avait) { itiCalculer(); return; } break; }   // un trajet déjà calculé est refait avec le nouvel ordre
     case 'calc': itiCalculer(); return;
     case 'dep': case 'arr': case 'etape': attendDepart = (a === 'etape' && attendDepart === 'etape') ? false : a; if (attendDepart) itiArmer(); break;
     case 'plus': iti.adr = { ...nouvAdr('etape'), ouvert:!(iti.adr.ouvert && iti.adr.role === 'etape') }; if (!iti.adr.ouvert) attendDepart = false; break;
