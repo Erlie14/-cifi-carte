@@ -21,7 +21,7 @@
   :root { --ink:#161616; --muted:#666; --paper:#fff; --line:#ddd; --accent:#000091; }
   html, body { height:100%; margin:0; font-family:var(--police, Marianne, Arial, sans-serif); color:var(--ink); }
   body { overflow:hidden; }   /* les volets cachés à droite (fiche, itinéraire, progression) ne doivent pas élargir la page */
-  #map { height:100%; width:100%; }
+  #map { height:100%; width:100%; } .leaflet-container { background:#eceae4; }   /* teinte neutre : les tuiles pas encore chargées se voient moins */
   #msg { position:absolute; inset:0; z-index:1000; display:none; align-items:center; justify-content:center;
          background:rgba(255,255,255,.95); padding:24px; text-align:center; line-height:1.5; font-size:15px; }
 
@@ -185,7 +185,7 @@
   .iti-liste button { font-size:12px; padding:2px 6px; border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer; }
   .iti-num { width:18px; height:18px; border-radius:50%; background:#161616; color:#fff; font:700 11px/14px system-ui; text-align:center; border:2px solid #fff; box-shadow:0 0 0 1px #0006; box-sizing:border-box; }
   .iti-total { margin-top:10px; font-weight:600; }
-  @media print { body.imprime-iti #map, body.imprime-iti #fiche-panel, body.imprime-iti #reglages { display:none !important; } body.imprime-iti { overflow:visible; height:auto; } body.imprime-iti #iti-panel { position:static; transform:none; visibility:visible; width:auto; box-shadow:none; }
+  @media print { body.imprime-iti > *:not(#map):not(#iti-panel):not(script):not(style) { display:none !important; } body.imprime-iti .leaflet-control-container { display:none !important; } body.imprime-iti { overflow:visible; height:auto; -webkit-print-color-adjust:exact; print-color-adjust:exact; } body.imprime-iti #map { position:relative; width:100%; height:120mm; } body.imprime-iti #iti-panel { position:static; transform:none; visibility:visible; width:auto; box-shadow:none; }
     body.imprime-iti .iti-actions, body.imprime-iti .fp-pied, body.imprime-iti .fp-fermer, body.imprime-iti .iti-liste button, body.imprime-iti .iti-ligne, body.imprime-iti #iti-retour { display:none; } }
   /* Police Marianne (réservée à l'État) : fournie localement (dossier lib/fonts) ou installée sur le poste */
   @font-face { font-family:Marianne; font-weight:400; font-style:normal; font-display:swap; src:local('Marianne'), local('Marianne-Regular'), url('./lib/fonts/Marianne-Regular.woff2') format('woff2'); }
@@ -304,7 +304,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '129';
+const VERSION = '130';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -322,8 +322,8 @@ const POS_COMMUNE = ['Haut à droite', 'Haut au centre', 'Haut à gauche', 'Bas 
 
 const geopf = (l, f) => `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=${f}&LAYER=${l}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`;
 const fonds = {
-  'Plan IGN': L.tileLayer(geopf('GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2','image/png'), { maxNativeZoom:19, maxZoom:21, attribution:'© IGN – Géoplateforme' }),
-  'Photographies aériennes': L.tileLayer(geopf('ORTHOIMAGERY.ORTHOPHOTOS','image/jpeg'), { maxNativeZoom:19, maxZoom:21, attribution:'© IGN – Géoplateforme' }),
+  'Plan IGN': L.tileLayer(geopf('GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2','image/png'), { maxNativeZoom:19, maxZoom:21, keepBuffer:6, attribution:'© IGN – Géoplateforme' }),
+  'Photographies aériennes': L.tileLayer(geopf('ORTHOIMAGERY.ORTHOPHOTOS','image/jpeg'), { maxNativeZoom:19, maxZoom:21, keepBuffer:6, attribution:'© IGN – Géoplateforme' }),
 };
 
 /* ================= OUTILS ================= */
@@ -1365,7 +1365,7 @@ function itiDessiner() {
       <div class="iti-actions"><button type="button" data-i="calc" class="prim">Calculer l’itinéraire</button></div>
       ${iti.msg ? `<p class="vide" style="font-size:13px">${esc(iti.msg)}</p>` : ''}
       ${iti.total ? `<div class="iti-total">Total : ${fmtDist(iti.total.d)} · ${fmtDuree(iti.total.t)}</div>` : ''}
-    </div><div class="fp-pied"><button type="button" class="iti-btn2" data-i="copier">Copier la feuille de route</button> <button type="button" class="iti-btn2" data-i="imprimer">Imprimer</button></div>`;
+    </div><div class="fp-pied"><button type="button" class="iti-btn2" data-i="imprimer">Imprimer</button></div>`;
   itiMarques();
 }
 let itiDir = 'asc';   // sens du tri « selon une colonne »
@@ -1405,20 +1405,13 @@ async function itiCalculer() {
   iti.msg = ko ? `${ko} trajet(s) non calculé(s) : service injoignable ou point hors du réseau routier.` : '';
   itiDessiner(); if (itiRoute.getLayers().length) map.fitBounds(itiRoute.getBounds(), { padding:[50,50] });
 }
-function itiTexte() {
-  const l = [`Itinéraire – ${iti.mode === 'car' ? 'voiture' : 'à pied'}`]; if (iti.depart) l.push(`Départ : ${iti.departLib || 'point choisi sur la carte'}`);
-  iti.ids.forEach((id, k) => { const g = iti.legs.length ? iti.legs[iti.depart ? k : k - 1] : undefined; l.push(`${k + 1}. ${nomDe(id)}${g ? ` (${fmtDist(g.d)}, ${fmtDuree(g.t)})` : ''}`); });
-  if (iti.arrivee) { const g = iti.legs.length ? iti.legs[iti.legs.length - 1] : undefined; l.push(`Arrivée : ${iti.arriveeLib || 'point choisi sur la carte'}${g ? ` (${fmtDist(g.d)}, ${fmtDuree(g.t)})` : ''}`); }
-  if (iti.total) l.push(`Total : ${fmtDist(iti.total.d)}, ${fmtDuree(iti.total.t)}`);
-  const av = String(optBrut('iti_avert', ITI_AVERT)); if (av) l.push('', '⚠ ' + av);
-  return l.join('\n');
+async function itiImprimer() {   // feuille imprimée : la carte cadrée sur l'itinéraire, puis la liste des étapes
+  const c = map.getCenter(), z = map.getZoom(), cadre = L.featureGroup([itiRoute, itiPts]).getBounds();
+  document.body.classList.add('imprime-iti'); map.invalidateSize();
+  if (cadre.isValid()) map.fitBounds(cadre, { padding:[24, 24], animate:false });
+  await new Promise(ok => setTimeout(ok, 1500));   // le temps que le fond de carte se charge
+  try { window.print(); } finally { document.body.classList.remove('imprime-iti'); map.invalidateSize(); map.setView(c, z, { animate:false }); }
 }
-function itiCopier(b) {
-  const txt = itiTexte(), ok = () => { b.textContent = '✓ Copié'; };
-  const secours = () => { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); ok(); } catch (e) { alert(txt); } ta.remove(); };
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, secours); else secours();
-}
-function itiImprimer() { document.body.classList.add('imprime-iti'); try { window.print(); } finally { document.body.classList.remove('imprime-iti'); } }
 itiPanel.addEventListener('click', e => {
   const b = e.target.closest('button[data-i]'); if (!b) return; const a = b.dataset.i, k = +b.dataset.k;
   switch (a) {
@@ -1442,7 +1435,6 @@ itiPanel.addEventListener('click', e => {
       else { const pt = L.latLng(r.lat, r.lng), lib = r.id !== undefined ? r.lib : 'Adresse : ' + r.lib; if (ro === 'arr') { iti.arrivee = pt; iti.arriveeLib = lib; } else { iti.depart = pt; iti.departLib = lib; } }
       iti.adr = ro === 'etape' ? { ...nouvAdr('etape'), ouvert:true } : nouvAdr(); itiReset(); } break; }
     case 'pos': itiPosition(); return;
-    case 'copier': itiCopier(b); return;
     case 'imprimer': itiImprimer(); return;
     default: return;
   }
