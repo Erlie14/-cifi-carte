@@ -306,7 +306,7 @@
 <aside id="fiche-panel" aria-label="Fiche du point" aria-hidden="true"></aside>
 
 <script>
-const VERSION = '134';
+const VERSION = '135';
 const peutModifier = !/[?&]readonly=(1|true)/i.test(location.search);
 const FORMES = ['rond','goutte','carre','losange','triangle'], FORMES_LIB = { rond:'Rond', goutte:'Goutte', carre:'Carré', losange:'Losange', triangle:'Triangle' }, SYMBOLES = { rond:'●', carre:'■', losange:'◆', triangle:'▲' };
 const pastille = (f, c, t, bc, be, tail) => `<span class="sw" style="width:${tail + 4}px"><span class="pin f-${f}${sombre(c) ? ' sombre' : ''}" style="background:${c};${bc ? (be === 0 ? 'border:0;' : `border:${Math.max(1, Math.round((be ?? 3) * tail / 30))}px solid ${bc};`) : ''}width:${tail}px;height:${tail}px;font-size:${String(t || '').length > 2 ? Math.round(tail * 0.36) : Math.round(tail * 0.55)}px"><span>${esc(t || '')}</span></span></span>`;
@@ -324,8 +324,8 @@ const POS_COMMUNE = ['Haut à droite', 'Haut au centre', 'Haut à gauche', 'Bas 
 
 const geopf = (l, f) => `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=${f}&LAYER=${l}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`;
 const fonds = {
-  'Plan IGN': L.tileLayer(geopf('GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2','image/png'), { maxNativeZoom:19, maxZoom:21, keepBuffer:6, attribution:'© IGN – Géoplateforme' }),
-  'Photographies aériennes': L.tileLayer(geopf('ORTHOIMAGERY.ORTHOPHOTOS','image/jpeg'), { maxNativeZoom:19, maxZoom:21, keepBuffer:6, attribution:'© IGN – Géoplateforme' }),
+  'Plan IGN': L.tileLayer(geopf('GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2','image/png'), { maxNativeZoom:19, maxZoom:21, keepBuffer:4, attribution:'© IGN – Géoplateforme' }),
+  'Photographies aériennes': L.tileLayer(geopf('ORTHOIMAGERY.ORTHOPHOTOS','image/jpeg'), { maxNativeZoom:19, maxZoom:21, keepBuffer:4, attribution:'© IGN – Géoplateforme' }),
 };
 
 /* ================= OUTILS ================= */
@@ -483,6 +483,10 @@ function styleDe(vals) {
 }
 
 /* ================= CARTE ET PANNEAU DE GAUCHE ================= */
+Object.values(fonds).forEach(c => c.on('tileerror', e => {   // une tuile qui n'a pas pu se charger est redemandée (sinon la zone reste grise jusqu'au prochain déplacement)
+  const t = e.tile, n = (t._essais || 0) + 1; if (n > 3) return; t._essais = n;
+  setTimeout(() => { if (t.isConnected) t.src = t.src.replace(/&_r=\d+$/, '') + '&_r=' + n; }, 500 * n);
+}));
 const map = L.map('map', { center:[46.6,2.5], zoom:6, minZoom:4, maxZoom:21, zoomSnap:0.5, zoomDelta:0.5, wheelPxPerZoomLevel:90, zoomControl:false, layers:[fonds['Plan IGN']] });
 const barre = document.createElement('div'); barre.id = 'barre'; barre.innerHTML = '<div id="barre-btns"></div><div class="pop" id="pop-legende"></div><div class="pop" id="pop-liste"></div>'; document.body.appendChild(barre);
 ['hc', 'bc'].forEach(k => { const h = document.createElement('div'); h.id = 'hote-' + k; h.className = 'hote'; document.body.appendChild(h); });
